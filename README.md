@@ -4,5 +4,14 @@ This repository contains our GAN implementations, reports, and experiment result
 
 # Authors
 
-Nguyen Binh Nguyen
+[Nguyen Binh Nguyen](github.com/nguyenrtm)
+
 [Tran Ba Hoang](github.com/hoangbros03)
+
+# Usage
+
+Step 1: Install this repo as a pip package
+
+```
+pip install -e .
+```
