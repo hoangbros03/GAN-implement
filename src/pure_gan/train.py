@@ -56,8 +56,9 @@ class Generator(nn.Module):
         x = self.n2(x)
         x = self.l4(x)
         x = self.n3(x)
+        x = self.l_final(x)
         x = self.activation(x)
-        return x.reshape(self.batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2])
+        return x.reshape(-1, self.img_shape[1], self.img_shape[2])
 
 class Discriminator(nn.Module):
     """
@@ -72,7 +73,6 @@ class Discriminator(nn.Module):
         """
         super(Discriminator, self).__init__()
         self.img_shape = img_shape
-        self.batch_size = batch_size
 
         if activation=="ReLU":
             self.activation = nn.ReLU()
@@ -93,7 +93,7 @@ class Discriminator(nn.Module):
         Args:
             img (_type_): _description_
         """
-        img = img.reshape(self.batch_size, -1)
+        img = img.reshape(-1, self.img_shape[1] * self.img_shape[2])
         img = self.l1(img)
         img = self.l2(img)
         img = self.l3(img)
@@ -124,37 +124,39 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
     disciminator_model.train()
     for epoch in range(epochs):
         for i, (imgs, _) in enumerate(dataloader):
+            imgs = imgs.reshape((-1, img_shape[1], img_shape[2]))
             # Get ground truth
-            real_ground_truth = torch.ones(batch_size, 1)
-            fake_ground_truth = torch.zeros(batch_size, 1)
+            real_ground_truth = torch.ones(imgs.shape[0], 1).to(device)
+            fake_ground_truth = torch.zeros(imgs.shape[0], 1).to(device)
 
             # Train discriminator
             imgs.to(device)
             d_optimizer.zero_grad()
-            fake_samples = generator_model(torch.randint(0,2(batch_size,latent_dim)))
+            fake_samples = generator_model(torch.randint(0,2,(imgs.shape[0],latent_dim)).float().to(device))
 
             real_loss = value_function_loss(disciminator_model(imgs), real_ground_truth)
             fake_loss = value_function_loss(disciminator_model(fake_samples), fake_ground_truth)
             d_loss = (real_loss + fake_loss)/2
+            print(f"epoch: {epoch}/{epochs}, d_loss: {d_loss.item()}")
+            wandb.log({
+                "Epoch": epoch,
+                "D_loss": d_loss.item()
+            })
             d_loss.backward()
             d_optimizer.step()
 
 
         # Train the generator
         g_optimizer.zero_grad()
-        fake_samples = generator_model(torch.randint(0,2(batch_size,latent_dim)))
+        fake_samples = generator_model(torch.randint(0,2,(imgs.shape[0],latent_dim)).float().to(device))
         g_loss = value_function_loss(disciminator_model(fake_samples), real_ground_truth)
         g_loss.backward()
         g_optimizer.step()
 
-        print(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, epochs, i, len(dataloader), d_loss.item(), g_loss.item())
-        )
-        wandb.log(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, epochs, i, len(dataloader), d_loss.item(), g_loss.item())
-        )
+        print(f"Epoch: {epoch}/{epochs}, g_loss: {g_loss.item()}")
+        wandb.log({
+          "Epoch": epoch, "Total epoch": epochs, "g_loss": g_loss.item()
+            })
 
 if __name__ == "__main__":
     # Parser
@@ -168,7 +170,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # CONSTANT VARIABLE
-    IMG_SHAPE = (3,28,28)
+    IMG_SHAPE = (1,28,28)
 
     # Create dir
     check_and_create_dir("gen_images")
@@ -183,8 +185,8 @@ if __name__ == "__main__":
     project="pure-gan",
     # Track hyperparameters and run metadata
     config={
-        "learning_rate": args.learning_rate,
-        "epochs": args.lr,
+        "learning_rate": args.lr,
+        "epochs": args.epochs,
     })
 
     # Train
