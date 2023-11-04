@@ -1,0 +1,176 @@
+import argparse
+from pathlib import Path
+import sys
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.optim import Adam
+from utils import check_and_create_dir
+from mnist_dataloader import check_and_process_dataloader
+
+class Generator(nn.Module):
+    """
+    The Generator model class
+    """
+
+    def __init__(self, latent_dim, img_shape, batch_size, activation="ReLU"):
+        """Constructor
+
+        Args:
+            latent_dim (int): Dimension of latent space
+            img_shape (tuple): Tuple containing shape of the image (channels, width, height)
+            activation (str, optional): Define the activation. Defaults to "ReLU".
+        """
+        super(Generator, self).__init__()
+        self.img_shape = img_shape
+        self.batch_size = batch_size
+        if activation=="ReLU":
+            self.activation = nn.ReLU()
+        elif activation=="LeakyReLU":
+            self.activation = nn.LeakyReLU()
+        else:
+            self.activation = nn.Sigmoid()
+
+        self.l1 = nn.Linear(latent_dim, 128)
+        self.l2 = nn.Linear(128,256)
+        self.n1 = nn.BatchNorm1d(256)
+        self.l3 = nn.Linear(256,1024)
+        self.n2 = nn.BatchNorm1d(1024)
+        self.l4 = nn.Linear(1024,2048)
+        self.n3 = nn.BatchNorm1d(2048)
+        self.l_final = nn.Linear(2048, int(np.prod(img_shape)))
+    
+    def forward(self, latent_space):
+        """_summary_ TODO
+
+        Args:
+            latent_space (_type_): _description_
+        """
+        x = self.l1(latent_space)
+        x = self.l2(x)
+        x = self.n1(x)
+        x = self.l3(x)
+        x = self.n2(x)
+        x = self.l4(x)
+        x = self.n3(x)
+        x = self.activation(x)
+        return x.reshape(self.batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2])
+
+class Discriminator(nn.Module):
+    """
+    The Discriminator class
+    """
+
+    def __init__(self, img_shape, batch_size,activation="ReLU"):
+        """_summary_ TODO
+
+        Args:
+            img_shape (_type_): _description_
+        """
+        super(Discriminator, self).__init__()
+        self.img_shape = img_shape
+        self.batch_size = batch_size
+
+        if activation=="ReLU":
+            self.activation = nn.ReLU()
+        elif activation=="LeakyReLU":
+            self.activation = nn.LeakyReLU()
+        else:
+            self.activation = nn.Sigmoid()
+        
+        self.l1 = nn.Linear(int(np.prod(img_shape)), 512)
+        self.l2 = nn.Linear(512,256)
+        self.l3 = nn.Linear(256,64)
+        self.l4 = nn.Linear(64,1)
+        self.l_final = nn.Sigmoid()
+    
+    def forward(self, img):
+        """_summary_ TODO
+
+        Args:
+            img (_type_): _description_
+        """
+        img = img.reshape(self.batch_size, -1)
+        img = self.l1(img)
+        img = self.l2(img)
+        img = self.l3(img)
+        img = self.l4(img)
+        img = self.l_final(img)
+        return img
+
+def train(dataloader, epochs, latent_dim, img_shape, batch_size):
+    """_summary_ TODO
+
+    Args:
+        dataloader (_type_): _description_
+    """
+    # Device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    # Loss and model
+    value_function_loss = nn.BCELoss()
+    generator_model = Generator(latent_dim,img_shape,batch_size)
+    disciminator_model = Discriminator(img_shape,batch_size)
+
+    g_optimizer = Adam(generator_model.parameters(), lr=args.lr)
+    d_optimizer = Adam(disciminator_model.parameters(), lr=args.lr)
+    
+    generator_model.to(device)
+    disciminator_model.to(device)
+    generator_model.train()
+    disciminator_model.train()
+    for epoch in range(epochs):
+        for i, (imgs, _) in enumerate(dataloader):
+            # Get ground truth
+            real_ground_truth = torch.ones(batch_size, 1)
+            fake_ground_truth = torch.zeros(batch_size, 1)
+
+            # Train discriminator
+            imgs.to(device)
+            d_optimizer.zero_grad()
+            fake_samples = generator_model(torch.randint(0,2(batch_size,latent_dim)))
+
+            real_loss = value_function_loss(disciminator_model(imgs), real_ground_truth)
+            fake_loss = value_function_loss(disciminator_model(fake_samples), fake_ground_truth)
+            d_loss = (real_loss + fake_loss)/2
+            d_loss.backward()
+            d_optimizer.step()
+
+
+        # Train the generator
+        g_optimizer.zero_grad()
+        fake_samples = generator_model(torch.randint(0,2(batch_size,latent_dim)))
+        g_loss = value_function_loss(disciminator_model(fake_samples), real_ground_truth)
+        g_loss.backward()
+        g_optimizer.step()
+
+        print(
+            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
+            % (epoch, epochs, i, len(dataloader), d_loss.item(), g_loss.item())
+        )
+        
+
+
+
+if __name__ == "__main__":
+    # Parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-e","--epochs", type=int, default=200, help="number of epochs")
+    parser.add_argument("-b","--batch_size", type=int, default=64, help="batch_size")
+    parser.add_argument("--lr", type=float, default=0.0002, help="learning rate")
+    parser.add_argument("--cpus", type=int, default=8, help="number of cpu threads to use during batch generation")
+    parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
+    parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
+    args = parser.parse_args()
+
+    # Create dir
+    check_and_create_dir("gen_images")
+
+    # Dataloader
+    dataloader = check_and_process_dataloader("mnist", (3,28,28), 32)
+
+    # Train
+    train(dataloader, args.epochs)
+    
