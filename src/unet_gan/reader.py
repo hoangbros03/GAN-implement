@@ -6,7 +6,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class Reader:
-    def __init__(self, dataroot, batch_size, workers, image_size):
+    def __init__(self, 
+                 dataroot, 
+                 batch_size=32, 
+                 workers=2, 
+                 image_size=256):
+        
         self.dataroot = dataroot
         self.batch_size = batch_size
         self.workers = workers
