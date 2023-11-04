@@ -136,16 +136,6 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
             real_loss = value_function_loss(disciminator_model(imgs), real_ground_truth)
             fake_loss = value_function_loss(disciminator_model(fake_samples), fake_ground_truth)
             d_loss = (real_loss + fake_loss)/2
-            print(f"epoch: {epoch}/{epochs}, d_loss: {d_loss.item()}")
-            wandb.log({
-                "Epoch": epoch,
-                "D_loss": d_loss.item()
-            })
-            print(f"epoch: {epoch}/{epochs}, d_loss: {d_loss.item()}")
-            wandb.log({
-                "Epoch": epoch,
-                "D_loss": d_loss.item()
-            })
             d_loss.backward()
             d_optimizer.step()
 
@@ -162,11 +152,7 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
         wandb.log({
           "Epoch": epoch, "Total epoch": epochs, "g_loss": g_loss.item()
             })
-        print(f"Epoch: {epoch}/{epochs}, g_loss: {g_loss.item()}")
-        wandb.log({
-          "Epoch": epoch, "Total epoch": epochs, "g_loss": g_loss.item()
-            })
-
+        
 if __name__ == "__main__":
     # Parser
     parser = argparse.ArgumentParser()
