@@ -12,9 +12,9 @@ def check_and_process_dataloader(dir, img_shape,batch_size):
     check_and_create_dir(dir)
     transform = transforms.Compose(
         [
-            transforms.Resize(img_shape[1], img_shape[2]),
+            transforms.Resize((img_shape[1], img_shape[2])),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize((0.5), (0.5))
         ]
     )
     return DataLoader(
@@ -23,7 +23,7 @@ def check_and_process_dataloader(dir, img_shape,batch_size):
             train=True,
             download=True,
             transform=transform,
-            batch_size = batch_size,
-            shuffle=True
-        )
+        ),
+        batch_size = batch_size,
+        shuffle=True
     )
