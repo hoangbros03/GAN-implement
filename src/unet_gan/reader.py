@@ -6,16 +6,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class Reader:
-    def __init__(self, dataroot, batch_size, workers):
+    def __init__(self, dataroot, batch_size, workers, image_size):
         self.dataroot = dataroot
         self.batch_size = batch_size
         self.workers = workers
+        self.image_size = image_size
 
     def path_to_dataloader(self):
         dataset = dset.ImageFolder(root=self.dataroot,
                                    transform=transforms.Compose([
-                                       transforms.Resize(256),
-                                       transforms.CenterCrop(256),
+                                       transforms.Resize(self.image_size),
+                                       transforms.CenterCrop(self.image_size),
                                        transforms.ToTensor()
                                    ]))
         
@@ -36,5 +37,5 @@ class Reader:
 if __name__ == "__main__":
     dataroot = "data\sketches_png\png"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    reader = Reader(dataroot=dataroot, batch_size=32, workers=2)
+    reader = Reader(dataroot=dataroot, batch_size=32, workers=2, image_size=256)
     dataloader = reader.path_to_dataloader()
