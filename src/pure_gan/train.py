@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch.optim import Adam
 from utils import check_and_create_dir
 from mnist_dataloader import check_and_process_dataloader
+import wandb
 
 class Generator(nn.Module):
     """
@@ -100,7 +101,7 @@ class Discriminator(nn.Module):
         img = self.l_final(img)
         return img
 
-def train(dataloader, epochs, latent_dim, img_shape, batch_size):
+def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
     """_summary_ TODO
 
     Args:
@@ -114,8 +115,8 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size):
     generator_model = Generator(latent_dim,img_shape,batch_size)
     disciminator_model = Discriminator(img_shape,batch_size)
 
-    g_optimizer = Adam(generator_model.parameters(), lr=args.lr)
-    d_optimizer = Adam(disciminator_model.parameters(), lr=args.lr)
+    g_optimizer = Adam(generator_model.parameters(), lr=learning_rate)
+    d_optimizer = Adam(disciminator_model.parameters(), lr=learning_rate)
     
     generator_model.to(device)
     disciminator_model.to(device)
@@ -150,9 +151,10 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size):
             "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
             % (epoch, epochs, i, len(dataloader), d_loss.item(), g_loss.item())
         )
-        
-
-
+        wandb.log(
+            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
+            % (epoch, epochs, i, len(dataloader), d_loss.item(), g_loss.item())
+        )
 
 if __name__ == "__main__":
     # Parser
@@ -165,12 +167,26 @@ if __name__ == "__main__":
     parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
     args = parser.parse_args()
 
+    # CONSTANT VARIABLE
+    IMG_SHAPE = (3,28,28)
+
     # Create dir
     check_and_create_dir("gen_images")
 
     # Dataloader
-    dataloader = check_and_process_dataloader("mnist", (3,28,28), 32)
+    dataloader = check_and_process_dataloader("mnist", IMG_SHAPE, args.batch_size)
+
+    # Wandb
+    wandb.login()
+    run = wandb.init(
+    # Set the project where this run will be logged
+    project="pure-gan",
+    # Track hyperparameters and run metadata
+    config={
+        "learning_rate": args.learning_rate,
+        "epochs": args.lr,
+    })
 
     # Train
-    train(dataloader, args.epochs)
+    train(dataloader, args.epochs, args.latent_dim, IMG_SHAPE, args.batch_size, args.lr)
     
