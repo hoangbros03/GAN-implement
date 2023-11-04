@@ -112,8 +112,8 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
 
     # Loss and model
     value_function_loss = nn.BCELoss()
-    generator_model = Generator(latent_dim,img_shape,batch_size)
-    disciminator_model = Discriminator(img_shape,batch_size)
+    generator_model = Generator(latent_dim,img_shape,batch_size).to(device)
+    disciminator_model = Discriminator(img_shape,batch_size).to(device)
 
     g_optimizer = Adam(generator_model.parameters(), lr=learning_rate)
     d_optimizer = Adam(disciminator_model.parameters(), lr=learning_rate)
@@ -124,13 +124,12 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
     disciminator_model.train()
     for epoch in range(epochs):
         for i, (imgs, _) in enumerate(dataloader):
-            imgs = imgs.reshape((-1, img_shape[1], img_shape[2]))
+            imgs = imgs.reshape((-1, img_shape[1], img_shape[2])).to(device)
             # Get ground truth
             real_ground_truth = torch.ones(imgs.shape[0], 1).to(device)
             fake_ground_truth = torch.zeros(imgs.shape[0], 1).to(device)
 
             # Train discriminator
-            imgs.to(device)
             d_optimizer.zero_grad()
             fake_samples = generator_model(torch.randint(0,2,(imgs.shape[0],latent_dim)).float().to(device))
 
@@ -153,6 +152,7 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
 
         # Train the generator
         g_optimizer.zero_grad()
+        real_ground_truth = torch.ones(batch_size, 1).to(device)
         fake_samples = generator_model(torch.randint(0,2,(batch_size,latent_dim)).float().to(device))
         g_loss = value_function_loss(disciminator_model(fake_samples), real_ground_truth)
         g_loss.backward()
