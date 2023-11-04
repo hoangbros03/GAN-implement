@@ -14,6 +14,8 @@ class Reader:
     def path_to_dataloader(self):
         dataset = dset.ImageFolder(root=self.dataroot,
                                    transform=transforms.Compose([
+                                       transforms.Resize(256),
+                                       transforms.CenterCrop(256),
                                        transforms.ToTensor()
                                    ]))
         
