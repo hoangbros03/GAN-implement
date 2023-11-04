@@ -125,7 +125,6 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
     for epoch in range(epochs):
         for i, (imgs, _) in enumerate(dataloader):
             imgs = imgs.reshape((-1, img_shape[1], img_shape[2]))
-            imgs = imgs.reshape((-1, img_shape[1], img_shape[2]))
             # Get ground truth
             real_ground_truth = torch.ones(imgs.shape[0], 1).to(device)
             fake_ground_truth = torch.zeros(imgs.shape[0], 1).to(device)
