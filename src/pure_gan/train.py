@@ -125,6 +125,7 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
     for epoch in range(epochs):
         for i, (imgs, _) in enumerate(dataloader):
             imgs = imgs.reshape((-1, img_shape[1], img_shape[2]))
+            imgs = imgs.reshape((-1, img_shape[1], img_shape[2]))
             # Get ground truth
             real_ground_truth = torch.ones(imgs.shape[0], 1).to(device)
             fake_ground_truth = torch.zeros(imgs.shape[0], 1).to(device)
@@ -142,17 +143,26 @@ def train(dataloader, epochs, latent_dim, img_shape, batch_size, learning_rate):
                 "Epoch": epoch,
                 "D_loss": d_loss.item()
             })
+            print(f"epoch: {epoch}/{epochs}, d_loss: {d_loss.item()}")
+            wandb.log({
+                "Epoch": epoch,
+                "D_loss": d_loss.item()
+            })
             d_loss.backward()
             d_optimizer.step()
 
 
         # Train the generator
         g_optimizer.zero_grad()
-        fake_samples = generator_model(torch.randint(0,2,(imgs.shape[0],latent_dim)).float().to(device))
+        fake_samples = generator_model(torch.randint(0,2(batch_size,latent_dim)))
         g_loss = value_function_loss(disciminator_model(fake_samples), real_ground_truth)
         g_loss.backward()
         g_optimizer.step()
 
+        print(f"Epoch: {epoch}/{epochs}, g_loss: {g_loss.item()}")
+        wandb.log({
+          "Epoch": epoch, "Total epoch": epochs, "g_loss": g_loss.item()
+            })
         print(f"Epoch: {epoch}/{epochs}, g_loss: {g_loss.item()}")
         wandb.log({
           "Epoch": epoch, "Total epoch": epochs, "g_loss": g_loss.item()
@@ -171,6 +181,7 @@ if __name__ == "__main__":
 
     # CONSTANT VARIABLE
     IMG_SHAPE = (1,28,28)
+    IMG_SHAPE = (1,28,28)
 
     # Create dir
     check_and_create_dir("gen_images")
@@ -185,6 +196,8 @@ if __name__ == "__main__":
     project="pure-gan",
     # Track hyperparameters and run metadata
     config={
+        "learning_rate": args.lr,
+        "epochs": args.epochs,
         "learning_rate": args.lr,
         "epochs": args.epochs,
     })
