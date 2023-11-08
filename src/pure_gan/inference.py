@@ -8,32 +8,38 @@ from models import Generator
 from utils import check_and_create_dir
 
 
-def inference(model_file, latent_dim, img_shape, output_file):
+def inference(model_file, latent_dim, img_shape, device, amount, image_path):
     """_summary_
 
     Args:
         model_file (_type_): _description_
         output_file (_type_): _description_
     """
-    # Device
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
     # Load model
     model = Generator(latent_dim, img_shape).to(device)
     model.load_state_dict(torch.load(model_file))
 
     # Get result
     model.eval()
-    sample = torch.randint(0,2,(1,latent_dim)).float().to(device)
+    sample = torch.randn(amount, latent_dim) * 1.0
     img = model.forward(sample)
+    print(img.shape)
 
     # Export the image
-    denormalize = transforms.Normalize((-0.5/0.5), (1.0/0.5))
-    img = denormalize(img)
-    img = transforms.ToPILImage()(img)
-    img.save(output_file)
+    img*=255
+    img = img.cpu().detach().numpy().astype(np.uint8)
+    for i in range(amount):
+        this_img = Image.fromarray(img[i])
+        this_img.save(f"{image_path}/{model_file.split('/')[-1][:-4]}_{i}.png")
     
 
 if __name__=="__main__":
-    check_and_create_dir("gen_images")
-    inference("models/demo.pth", 100, (1,28,28), "gen_images/test.png")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m","--model", type=str, default="models", help="model file")
+    parser.add_argument("-ip","--image_path", type=str, default="gen_images", help="name of folder containing generated images")
+    parser.add_argument("-a","--amount", type=int, default=5, help="number of images that you want to generate")
+    parser.add_argument("-d","--device", type=str, default="cpu", help="cpu or cuda?")
+    parser.add_argument("-ld", "--latent_dim", type=int, default=100, help="Latent dim of input vector")
+    args = parser.parse_args()
+    check_and_create_dir(args.image_path)
+    inference(args.model, args.latent_dim, (1,28,28), args.device, args.amount, args.image_path)
