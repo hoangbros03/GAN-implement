@@ -1,5 +1,9 @@
+""" 
+File contains the models
+"""
 import numpy as np
-import torch.nn as nn
+from torch import nn
+
 
 class Generator(nn.Module):
     """
@@ -11,35 +15,36 @@ class Generator(nn.Module):
 
         Args:
             latent_dim (int): Dimension of latent space
-            img_shape (tuple): Tuple containing shape of the image (channels, width, height)
+            img_shape (tuple):
+                Tuple containing shape of the image (channels, width, height)
             activation (str, optional): Define the activation. Defaults to "ReLU".
         """
-        super(Generator, self).__init__()
+        super().__init__()
         self.img_shape = img_shape
-        if activation=="ReLU":
+        if activation == "ReLU":
             self.activation = nn.ReLU()
-        elif activation=="LeakyReLU":
+        elif activation == "LeakyReLU":
             self.activation = nn.LeakyReLU()
         else:
             self.activation = nn.Sigmoid()
 
         self.l1 = nn.Linear(latent_dim, 128)
         self.n0 = nn.BatchNorm1d(128)
-        self.l2 = nn.Linear(128,256)
+        self.l2 = nn.Linear(128, 256)
         self.n1 = nn.BatchNorm1d(256)
-        self.l3 = nn.Linear(256,1024)
+        self.l3 = nn.Linear(256, 1024)
         self.n2 = nn.BatchNorm1d(1024)
-        self.l4 = nn.Linear(1024,2048)
+        self.l4 = nn.Linear(1024, 2048)
         self.n3 = nn.BatchNorm1d(2048)
         self.sigmoid = nn.Sigmoid()
         self.l_final = nn.Linear(2048, int(np.prod(img_shape)))
         self.dropout = nn.Dropout(p=0.3)
-    
+
     def forward(self, latent_space):
-        """_summary_ TODO
+        """Forward function
 
         Args:
-            latent_space (_type_): _description_
+            latent_space (torch): The latent space
         """
         x = self.l1(latent_space)
         x = self.activation(x)
@@ -59,42 +64,50 @@ class Generator(nn.Module):
         x = self.sigmoid(x)
         return x.reshape(-1, self.img_shape[1], self.img_shape[2])
 
+
 class Discriminator(nn.Module):
     """
     The Discriminator class
     """
 
-    def __init__(self, img_shape,activation="ReLU"):
+    def __init__(self, img_shape, activation="ReLU"):
         """_summary_ TODO
 
         Args:
-            img_shape (_type_): _description_
+            img_shape (): shape of image
+            activation (string): Name of activation
+
+        Returns:
+            The output of model
         """
-        super(Discriminator, self).__init__()
+        super().__init__()
         self.img_shape = img_shape
 
-        if activation=="ReLU":
+        if activation == "ReLU":
             self.activation = nn.ReLU()
-        elif activation=="LeakyReLU":
+        elif activation == "LeakyReLU":
             self.activation = nn.LeakyReLU()
         else:
             self.activation = nn.Sigmoid()
-        
+
         self.l1 = nn.Linear(int(np.prod(img_shape)), 512)
         self.bn1 = nn.BatchNorm1d(512)
-        self.l2 = nn.Linear(512,256)
+        self.l2 = nn.Linear(512, 256)
         self.bn2 = nn.BatchNorm1d(256)
-        self.l3 = nn.Linear(256,64)
+        self.l3 = nn.Linear(256, 64)
         self.bn3 = nn.BatchNorm1d(64)
-        self.l4 = nn.Linear(64,1)
+        self.l4 = nn.Linear(64, 1)
         self.drop_out = nn.Dropout(p=0.3)
         self.l_final = nn.Sigmoid()
-    
+
     def forward(self, img):
-        """_summary_ TODO
+        """Forward function
 
         Args:
-            img (_type_): _description_
+            img (_type_): The input
+
+        Returns:
+            The output of model
         """
         img = img.reshape(-1, self.img_shape[1] * self.img_shape[2])
         img = self.l1(img)

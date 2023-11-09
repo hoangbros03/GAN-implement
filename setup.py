@@ -1,4 +1,7 @@
-from setuptools import setup, find_packages
+""" 
+Setup file
+"""
+from setuptools import setup
 
 setup(
     name="GAN_implementation",
