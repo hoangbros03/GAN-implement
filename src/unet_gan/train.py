@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils as vutils
-from .layers import UNetDiscriminator, UNetGenerator
+from layers import UNetDiscriminator, UNetGenerator
 
 class Trainer:
     def __init__(self, device='cpu'):
