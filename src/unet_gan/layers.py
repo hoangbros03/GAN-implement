@@ -2,194 +2,109 @@ import torch
 import torch.nn as nn
 from torch.nn.functional import relu
 
+class conv_block(nn.Module):
+    def __init__(self, in_c, out_c):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_c, out_c, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_c)
+        self.conv2 = nn.Conv2d(out_c, out_c, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_c)
+        self.relu = nn.ReLU()
+
+    def forward(self, inputs):
+        x = self.conv1(inputs)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+        return x
+
+class encoder_block(nn.Module):
+    def __init__(self, in_c, out_c):
+        super().__init__()
+        self.conv = conv_block(in_c, out_c)
+        self.pool = nn.MaxPool2d((2, 2))
+
+    def forward(self, inputs):
+        x = self.conv(inputs)
+        p = self.pool(x)
+        return x, p
+
+class decoder_block(nn.Module):
+    def __init__(self, in_c, out_c):
+        super().__init__()
+        self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=2, stride=2, padding=0)
+        self.conv = conv_block(out_c+out_c, out_c)
+
+    def forward(self, inputs, skip):
+        x = self.up(inputs)
+        x = torch.cat([x, skip], axis=1)
+        x = self.conv(x)
+        return x
+    
 class UNetDiscriminator(nn.Module):
     def __init__(self):
         super().__init__()
-        
-        # Encoder
-        # -------
-        # input:
-        self.e11 = nn.Conv2d(3, 64, kernel_size=3, padding=1) 
-        self.e12 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
-        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
-        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
-        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e51 = nn.Conv2d(512, 1024, kernel_size=3, padding=1)
-        self.e52 = nn.Conv2d(1024, 1024, kernel_size=3, padding=1)
-
-
-        # Decoder
-        self.upconv1 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
-        self.d11 = nn.Conv2d(1024, 512, kernel_size=3, padding=1)
-        self.d12 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
-
-        self.upconv2 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
-        self.d21 = nn.Conv2d(512, 256, kernel_size=3, padding=1)
-        self.d22 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-
-        self.upconv3 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
-        self.d31 = nn.Conv2d(256, 128, kernel_size=3, padding=1)
-        self.d32 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-
-        self.upconv4 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
-        self.d41 = nn.Conv2d(128, 64, kernel_size=3, padding=1)
-        self.d42 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-
-        # Output layer
-        self.outconv = nn.Conv2d(64, 1, kernel_size=1)
-
-    def forward(self, x):
-        # Encoder
-        xe11 = relu(self.e11(x))
-        xe12 = relu(self.e12(xe11))
-        xp1 = self.pool1(xe12)
-
-        xe21 = relu(self.e21(xp1))
-        xe22 = relu(self.e22(xe21))
-        xp2 = self.pool2(xe22)
-
-        xe31 = relu(self.e31(xp2))
-        xe32 = relu(self.e32(xe31))
-        xp3 = self.pool3(xe32)
-
-        xe41 = relu(self.e41(xp3))
-        xe42 = relu(self.e42(xe41))
-        xp4 = self.pool4(xe42)
-
-        xe51 = relu(self.e51(xp4))
-        xe52 = relu(self.e52(xe51))
-        
-        # Decoder
-        xu1 = self.upconv1(xe52)
-        xu11 = torch.cat([xu1, xe42], dim=1)
-        xd11 = relu(self.d11(xu11))
-        xd12 = relu(self.d12(xd11))
-
-        xu2 = self.upconv2(xd12)
-        xu22 = torch.cat([xu2, xe32], dim=1)
-        xd21 = relu(self.d21(xu22))
-        xd22 = relu(self.d22(xd21))
-
-        xu3 = self.upconv3(xd22)
-        xu33 = torch.cat([xu3, xe22], dim=1)
-        xd31 = relu(self.d31(xu33))
-        xd32 = relu(self.d32(xd31))
-
-        xu4 = self.upconv4(xd32)
-        xu44 = torch.cat([xu4, xe12], dim=1)
-        xd41 = relu(self.d41(xu44))
-        xd42 = relu(self.d42(xd41))
-
-        # Output layer
-        out = self.outconv(xd42)
-
-        return out
+        """ Encoder """
+        self.e1 = encoder_block(3, 64)
+        self.e2 = encoder_block(64, 128)
+        self.e3 = encoder_block(128, 256)
+        self.e4 = encoder_block(256, 512)
+        """ Bottleneck """
+        self.b = conv_block(512, 1024)
+        """ Decoder """
+        self.d1 = decoder_block(1024, 512)
+        self.d2 = decoder_block(512, 256)
+        self.d3 = decoder_block(256, 128)
+        self.d4 = decoder_block(128, 64)
+        """ Classifier """
+        self.outputs = nn.Conv2d(64, 1, kernel_size=1, padding=0)
+    
+    def forward(self, inputs):
+        """ Encoder """
+        s1, p1 = self.e1(inputs)
+        s2, p2 = self.e2(p1)
+        s3, p3 = self.e3(p2)
+        s4, p4 = self.e4(p3)
+        """ Bottleneck """
+        b = self.b(p4)
+        """ Decoder """
+        d1 = self.d1(b, s4)
+        d2 = self.d2(d1, s3)
+        d3 = self.d3(d2, s2)
+        d4 = self.d4(d3, s1)
+        """ Classifier """
+        outputs = self.outputs(d4)
+        return outputs
 
 class UNetGenerator(nn.Module):
     def __init__(self):
         super().__init__()
-        
-        # Encoder
-        # -------
-        # input:
-        self.e11 = nn.Conv2d(3, 64, kernel_size=3, padding=1) 
-        self.e12 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
-        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
-        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
-        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # input:
-        self.e51 = nn.Conv2d(512, 1024, kernel_size=3, padding=1)
-        self.e52 = nn.Conv2d(1024, 1024, kernel_size=3, padding=1)
-
-
-        # Decoder
-        self.upconv1 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
-        self.d11 = nn.Conv2d(1024, 512, kernel_size=3, padding=1)
-        self.d12 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
-
-        self.upconv2 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
-        self.d21 = nn.Conv2d(512, 256, kernel_size=3, padding=1)
-        self.d22 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-
-        self.upconv3 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
-        self.d31 = nn.Conv2d(256, 128, kernel_size=3, padding=1)
-        self.d32 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-
-        self.upconv4 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
-        self.d41 = nn.Conv2d(128, 64, kernel_size=3, padding=1)
-        self.d42 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-
-    def forward(self, x):
-        # Encoder
-        xe11 = relu(self.e11(x))
-        xe12 = relu(self.e12(xe11))
-        xp1 = self.pool1(xe12)
-
-        xe21 = relu(self.e21(xp1))
-        xe22 = relu(self.e22(xe21))
-        xp2 = self.pool2(xe22)
-
-        xe31 = relu(self.e31(xp2))
-        xe32 = relu(self.e32(xe31))
-        xp3 = self.pool3(xe32)
-
-        xe41 = relu(self.e41(xp3))
-        xe42 = relu(self.e42(xe41))
-        xp4 = self.pool4(xe42)
-
-        xe51 = relu(self.e51(xp4))
-        xe52 = relu(self.e52(xe51))
-        
-        # Decoder
-        xu1 = self.upconv1(xe52)
-        xu11 = torch.cat([xu1, xe42], dim=1)
-        xd11 = relu(self.d11(xu11))
-        xd12 = relu(self.d12(xd11))
-
-        xu2 = self.upconv2(xd12)
-        xu22 = torch.cat([xu2, xe32], dim=1)
-        xd21 = relu(self.d21(xu22))
-        xd22 = relu(self.d22(xd21))
-
-        xu3 = self.upconv3(xd22)
-        xu33 = torch.cat([xu3, xe22], dim=1)
-        xd31 = relu(self.d31(xu33))
-        xd32 = relu(self.d32(xd31))
-
-        xu4 = self.upconv4(xd32)
-        xu44 = torch.cat([xu4, xe12], dim=1)
-        xd41 = relu(self.d41(xu44))
-        xd42 = relu(self.d42(xd41))
-
-        out = xd42
-
-        return out
+        """ Encoder """
+        self.e1 = encoder_block(3, 64)
+        self.e2 = encoder_block(64, 128)
+        self.e3 = encoder_block(128, 256)
+        self.e4 = encoder_block(256, 512)
+        """ Bottleneck """
+        self.b = conv_block(512, 1024)
+        """ Decoder """
+        self.d1 = decoder_block(1024, 512)
+        self.d2 = decoder_block(512, 256)
+        self.d3 = decoder_block(256, 128)
+        self.d4 = decoder_block(128, 64)
+    
+    def forward(self, inputs):
+        """ Encoder """
+        s1, p1 = self.e1(inputs)
+        s2, p2 = self.e2(p1)
+        s3, p3 = self.e3(p2)
+        s4, p4 = self.e4(p3)
+        """ Bottleneck """
+        b = self.b(p4)
+        """ Decoder """
+        d1 = self.d1(b, s4)
+        d2 = self.d2(d1, s3)
+        d3 = self.d3(d2, s2)
+        d4 = self.d4(d3, s1)
+        return d4
