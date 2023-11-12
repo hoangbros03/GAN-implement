@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils as vutils
-from layers import UNetDiscriminator, UNetGenerator
+from layers import UNetDiscriminator, Generator
 
 class Trainer:
     def __init__(self, device='cpu'):
         self.device = device
         self.criterion = nn.BCELoss()
-        self.netG = UNetGenerator().to(device)
+        self.netG = Generator().to(device)
         self.netD = UNetDiscriminator().to(device)
 
         # Establish convention for real and fake labels during training
@@ -19,9 +19,9 @@ class Trainer:
         self.optimizerD = optim.Adam(self.netD.parameters(), lr=0.0001, betas=(0.5, 0.999))
         self.optimizerG = optim.Adam(self.netG.parameters(), lr=0.0001, betas=(0.5, 0.999))
 
-    def train_loop(self, 
+    def train_loop(self,
                    dataloader,
-                   num_epochs=1, 
+                   num_epochs=1,
                    b_size=32):
         fixed_noise = torch.randn(b_size, 3, 256, 256, device=self.device)
 
@@ -50,8 +50,9 @@ class Trainer:
                 b_size = real_cpu.size(0)
                 label = torch.full((b_size,), self.real_label, dtype=torch.float, device=self.device)
                 real_cpu.view(b_size, 256, 256, 3)
+                print("Forwarding batch...")
                 # Forward pass real batch through D
-                output = self.netD(real_cpu).view(-1)
+                output = self.netD(real_cpu).squeeze()
                 print(output.shape)
                 # Calculate loss on all-real batch
                 errD_real = self.criterion(output, label)
@@ -62,22 +63,21 @@ class Trainer:
                 print("Training fake batch...")
                 ## Train with all-fake batch
                 # Generate batch of latent vectors
-                noise = torch.randn(b_size, 3, 256, 256, device=self.device)
+                noise = torch.randn(b_size, 100, 1, 1, device=device)
                 # Generate fake image batch with G
-                noise.view(b_size, 256, 256, 3)
-                fake = self.netG(noise)
-                label.fill_(self.fake_label)
+                fake = netG(noise)
+                label.fill_(fake_label)
                 # Classify all fake batch with D
-                output = self.netD(fake.detach()).view(-1)
+                output = netD(fake.detach()).view(-1)
                 # Calculate D's loss on the all-fake batch
-                errD_fake = self.criterion(output, label)
+                errD_fake = criterion(output, label)
                 # Calculate the gradients for this batch, accumulated (summed) with previous gradients
                 errD_fake.backward()
                 D_G_z1 = output.mean().item()
                 # Compute error of D as sum over the fake and the real batches
                 errD = errD_real + errD_fake
                 # Update D
-                self.optimizerD.step()
+                optimizerD.step()
                 print("Done training discriminator...")
 
                 ############################
