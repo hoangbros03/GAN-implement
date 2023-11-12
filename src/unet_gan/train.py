@@ -63,21 +63,21 @@ class Trainer:
                 print("Training fake batch...")
                 ## Train with all-fake batch
                 # Generate batch of latent vectors
-                noise = torch.randn(b_size, 100, 1, 1, device=device)
+                noise = torch.randn(b_size, 100, 1, 1, device=self.device)
                 # Generate fake image batch with G
-                fake = netG(noise)
-                label.fill_(fake_label)
+                fake = self.netG(noise)
+                label.fill_(self.fake_label)
                 # Classify all fake batch with D
-                output = netD(fake.detach()).view(-1)
+                output = self.netD(fake.detach()).view(-1)
                 # Calculate D's loss on the all-fake batch
-                errD_fake = criterion(output, label)
+                errD_fake = self.criterion(output, label)
                 # Calculate the gradients for this batch, accumulated (summed) with previous gradients
                 errD_fake.backward()
                 D_G_z1 = output.mean().item()
                 # Compute error of D as sum over the fake and the real batches
                 errD = errD_real + errD_fake
                 # Update D
-                optimizerD.step()
+                self.optimizerD.step()
                 print("Done training discriminator...")
 
                 ############################
