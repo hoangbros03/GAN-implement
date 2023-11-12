@@ -31,6 +31,7 @@ class Trainer:
                    b_size=32,
                    channel=3,
                    D_G_train_proportion=3):
+        
         fixed_noise = torch.randn(b_size, noise_size, 1, 1, device=self.device)
 
         # Lists to keep track of progress
@@ -41,7 +42,6 @@ class Trainer:
         from tqdm import tqdm
         for epoch in tqdm(range(num_epochs)):
             # For each batch in the dataloader
-            print(f"Epoch {epoch} of {num_epochs}...")
             for i, data in enumerate(dataloader, 0):
                 if i % D_G_train_proportion == 0:
                     ############################

@@ -1,7 +1,11 @@
 import torch.nn as nn
 
 class Generator(nn.Module):
-    def __init__(self, noise_size, img_size, channel):
+    def __init__(self, 
+                 noise_size=100, 
+                 img_size=64, 
+                 channel=3):
+        
         super(Generator, self).__init__()
         self.ns = noise_size
         self.imgs = img_size
@@ -28,7 +32,7 @@ class Generator(nn.Module):
         return output
 
 class Discriminator(nn.Module):
-    def __init__(self, img_size):
+    def __init__(self, img_size=64):
         super(Discriminator, self).__init__()
         self.main = nn.Sequential(
             nn.Conv2d(3, img_size, 4, 2, 1, bias=False),
