@@ -1,6 +1,4 @@
-import torch
 import torch.nn as nn
-from torch.nn.functional import relu
 
 class Generator(nn.Module):
     def __init__(self, noise_size, img_size, channel):
