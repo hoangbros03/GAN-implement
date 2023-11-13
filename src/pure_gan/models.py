@@ -56,13 +56,13 @@ class Generator(nn.Module):
         x = self.l3(x)
         x = self.activation(x)
         x = self.n2(x)
-        x = self.dropout(x)
+        # x = self.dropout(x)
         x = self.l4(x)
         x = self.activation(x)
         x = self.n3(x)
         x = self.l_final(x)
         x = self.sigmoid(x)
-        return x.reshape(-1, self.img_shape[1], self.img_shape[2])
+        return x.reshape(-1, 1, self.img_shape[1], self.img_shape[2])
 
 
 class Discriminator(nn.Module):

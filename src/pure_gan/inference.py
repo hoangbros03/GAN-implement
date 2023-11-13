@@ -28,7 +28,7 @@ def inference(model_file, latent_dim, img_shape, device, amount, image_path):
     # Get result
     model.eval()
     sample = torch.randn(amount, latent_dim) * 1.0
-    img = model.forward(sample)
+    img = model.forward(sample.to(device))
     print(img.shape)
 
     # Export the image
