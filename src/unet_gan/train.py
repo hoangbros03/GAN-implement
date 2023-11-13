@@ -1,23 +1,38 @@
+import argparse
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils as vutils
-from layers import Discriminator, Generator
+import wandb
+from layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation
+from reader import Reader
 
 class Trainer:
-    def __init__(self, device='cpu'):
+    def __init__(self, device='cpu', generator="normal", discriminator="normal", lr=0.0001, log=False):
         self.device = device
         self.criterion = nn.BCELoss()
-        self.netG = Generator().to(device)
-        self.netD = Discriminator().to(device)
+        if generator == "normal":
+            self.netG = Generator().to(device)
+        elif generator == "ablation":
+            self.netG = Generator_Ablation().to(device)
+        else:
+            raise ValueError("generator must be either normal or ablation")
+
+        if discriminator == "normal":
+            self.netD = Discriminator().to(device)
+        elif discriminator == "ablation":
+            self.netD = Discriminator_Ablation().to(device)
+        else:
+            raise ValueError("discriminator must be either normal or ablation")
 
         # Establish convention for real and fake labels during training
         self.real_label = 1.
         self.fake_label = 0.
 
         # Setup Adam optimizers for both G and D
-        self.optimizerD = optim.Adam(self.netD.parameters(), lr=0.0001, betas=(0.5, 0.999))
-        self.optimizerG = optim.Adam(self.netG.parameters(), lr=0.0001, betas=(0.5, 0.999))
+        self.optimizerD = optim.Adam(self.netD.parameters(), lr=lr, betas=(0.5, 0.999))
+        self.optimizerG = optim.Adam(self.netG.parameters(), lr=lr, betas=(0.5, 0.999))
 
         self.img_list = []
         self.G_losses = []
@@ -117,6 +132,18 @@ class Trainer:
                 # Save Losses for plotting later
                 self.G_losses.append(errG.item())
                 self.D_losses.append(errD.item())
+                
+                if log:
+                    print(f"Epoch: {epoch}, total epoch: {num_epochs} \
+                    g_loss: {errG.item()}, d_loss: {errD.item()}")
+                    wandb.log(
+                    {
+                        "Epoch": epoch,
+                        "Total epoch": num_epochs,
+                        "g_loss": errG.item(),
+                        "d_loss": errD.item(),
+                    }
+                    )
 
                 # print("Generating on fixed noise...")
                 # Check how the generator is doing by saving G's output on fixed_noise
@@ -126,3 +153,38 @@ class Trainer:
                     self.img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
 
                 iters += 1
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-e", "--epochs", help="number of epochs", type=int, default=10)
+    parser.add_argument("-i", "--image_size", help="size of the images", type=int, default=64)
+    parser.add_argument("-b", "--batch_size", help="batch size", type=int, default=32)
+    parser.add_argument("-n", "--noise_size", help="noise size", type=int, default=100)
+    parser.add_argument("-lr", "--learning_rate", help="learning rate", type=float, default=0.0001)
+    parser.add_argument("-p", "--proportion", help="proportion between D and G", type=int, default=3)
+    parser.add_argument("-dt", "--discriminator_type", help="type of discriminator", type=str, default="normal")
+    parser.add_argument("-gt", "--generator_type", help="type of generator", type=str, default="normal")
+    parser.add_argument("d", "--device", help="cpu or cuda?", type=str, default="cpu")
+    parser.add_argument("-dr", "--data_root", help="data root", type=str, required=True)
+    parser.add_argument("-k","--key",help="key of wandb", type=str, default=None)
+
+    log = False
+    if args.key is not None:
+        # Wandb
+        wandb.login(key=args.key)
+        run = wandb.init(
+            # Set the project where this run will be logged
+            project="unet-gan",
+            # Track hyperparameters and run metadata
+            config={
+                "learning_rate": args.learning_rate,
+                "epochs": args.epochs,
+                "discriminator_type": args.discriminator_type,
+                "generator_type": args.generator_type,
+            },
+        )
+        log = True
+
+    trainer = Trainer(args.device, args.generator_type, args.discriminator_type, args.learning_rate)
+    dataloader = Reader(args.data_root)
+    trainer.train_loop(dataloader, args.epochs, args.img_size, args.noise_size, args.batch_size, 3, args.proportion, log)
