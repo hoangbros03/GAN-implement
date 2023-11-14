@@ -25,7 +25,8 @@ class Trainer:
             self.netG = Generator(img_size=img_size,
                                   channel=channel).to(device)
         elif generator == "mnist":
-            self.netG = GeneratorMNIST().to(device)
+            self.netG = GeneratorMNIST(img_size=img_size,
+                                       channel=channel).to(device)
         elif generator == "ablation":
             self.netG = Generator_Ablation().to(device)
         else:
@@ -35,7 +36,8 @@ class Trainer:
             self.netD = Discriminator(img_size=img_size,
                                       channel=channel).to(device)
         elif discriminator == "mnist":
-            self.netD = DiscriminatorMNIST().to(device)
+            self.netD = DiscriminatorMNIST(img_size=img_size,
+                                           channel=channel).to(device)
         elif discriminator == "ablation":
             self.netD = Discriminator_Ablation().to(device)
         else:

@@ -60,7 +60,7 @@ class GeneratorMNIST(nn.Module):
                  img_size=64, 
                  channel=3):
         
-        super(Generator, self).__init__()
+        super(GeneratorMNIST, self).__init__()
         self.ns = noise_size
         self.imgs = img_size
         self.c = channel
@@ -84,7 +84,7 @@ class GeneratorMNIST(nn.Module):
 
 class DiscriminatorMNIST(nn.Module):
     def __init__(self, img_size=64, channel=3):
-        super(Discriminator, self).__init__()
+        super(DiscriminatorMNIST, self).__init__()
         self.main = nn.Sequential(
             nn.Conv2d(channel, img_size, 4, 2, 2, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
