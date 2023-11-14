@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils as vutils
 import wandb
-from layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation
+from layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation, GeneratorMNIST, DiscriminatorMNIST
 from reader import Reader
 
 class Trainer:
@@ -19,9 +19,13 @@ class Trainer:
         
         self.device = device
         self.criterion = nn.BCELoss()
+        self.channel = channel
+        self.img_size = img_size
         if generator == "normal":
             self.netG = Generator(img_size=img_size,
                                   channel=channel).to(device)
+        elif generator == "mnist":
+            self.netG = GeneratorMNIST().to(device)
         elif generator == "ablation":
             self.netG = Generator_Ablation().to(device)
         else:
@@ -30,6 +34,8 @@ class Trainer:
         if discriminator == "normal":
             self.netD = Discriminator(img_size=img_size,
                                       channel=channel).to(device)
+        elif discriminator == "mnist":
+            self.netD = DiscriminatorMNIST().to(device)
         elif discriminator == "ablation":
             self.netD = Discriminator_Ablation().to(device)
         else:
@@ -50,10 +56,8 @@ class Trainer:
     def train_loop(self,
                    dataloader,
                    num_epochs=1,
-                   img_size=64,
                    noise_size=100,
                    b_size=32,
-                   channel=3,
                    D_G_train_proportion=3):
         
         fixed_noise = torch.randn(b_size, noise_size, 1, 1, device=self.device)
@@ -79,7 +83,7 @@ class Trainer:
                     real_cpu = data[0].to(self.device)
                     b_size = real_cpu.size(0)
                     label = torch.full((b_size,), self.real_label, dtype=torch.float, device=self.device)
-                    real_cpu.view(b_size, img_size, img_size, channel)
+                    real_cpu.view(b_size, self.img_size, self.img_size, self.channel)
                     # print("Forwarding batch...")
                     # Forward pass real batch through D
                     output = self.netD(real_cpu).squeeze()
@@ -141,18 +145,6 @@ class Trainer:
                 # Save Losses for plotting later
                 self.G_losses.append(errG.item())
                 self.D_losses.append(errD.item())
-                
-                if log:
-                    print(f"Epoch: {epoch}, total epoch: {num_epochs} \
-                    g_loss: {errG.item()}, d_loss: {errD.item()}")
-                    wandb.log(
-                    {
-                        "Epoch": epoch,
-                        "Total epoch": num_epochs,
-                        "g_loss": errG.item(),
-                        "d_loss": errD.item(),
-                    }
-                    )
 
                 # print("Generating on fixed noise...")
                 # Check how the generator is doing by saving G's output on fixed_noise
