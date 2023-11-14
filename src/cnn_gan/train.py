@@ -9,18 +9,27 @@ from layers import Discriminator, Generator, Generator_Ablation, Discriminator_A
 from reader import Reader
 
 class Trainer:
-    def __init__(self, device='cpu', generator="normal", discriminator="normal", lr=0.0001, log=False):
+    def __init__(self, device='cpu', 
+                 generator="normal", 
+                 discriminator="normal", 
+                 lr=0.0001, 
+                 img_size=64, 
+                 channel=3, 
+                 log=False):
+        
         self.device = device
         self.criterion = nn.BCELoss()
         if generator == "normal":
-            self.netG = Generator().to(device)
+            self.netG = Generator(img_size=img_size,
+                                  channel=channel).to(device)
         elif generator == "ablation":
             self.netG = Generator_Ablation().to(device)
         else:
             raise ValueError("generator must be either normal or ablation")
 
         if discriminator == "normal":
-            self.netD = Discriminator().to(device)
+            self.netD = Discriminator(img_size=img_size,
+                                      channel=channel).to(device)
         elif discriminator == "ablation":
             self.netD = Discriminator_Ablation().to(device)
         else:
@@ -53,7 +62,7 @@ class Trainer:
         iters = 0
 
         # print("Starting Training Loop...")
-        # For each epoch
+        # For each epochs
         from tqdm import tqdm
         for epoch in tqdm(range(num_epochs)):
             # For each batch in the dataloader

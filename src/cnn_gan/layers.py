@@ -32,10 +32,10 @@ class Generator(nn.Module):
         return output
 
 class Discriminator(nn.Module):
-    def __init__(self, img_size=64):
+    def __init__(self, img_size=64, channel=3):
         super(Discriminator, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv2d(3, img_size, 4, 2, 1, bias=False),
+            nn.Conv2d(channel, img_size, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(img_size, img_size * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(img_size * 2),

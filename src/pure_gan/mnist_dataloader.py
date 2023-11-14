@@ -35,3 +35,7 @@ def check_and_process_dataloader(directory, img_shape, batch_size):
         batch_size=batch_size,
         shuffle=True,
     )
+
+
+# if __name__ == "__main__":
+#     check_and_process_dataloader("mnist", (1, 28, 28), 32)
