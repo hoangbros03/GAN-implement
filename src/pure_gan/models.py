@@ -36,7 +36,7 @@ class Generator(nn.Module):
         self.n2 = nn.BatchNorm1d(1024)
         self.l4 = nn.Linear(1024, 2048)
         self.n3 = nn.BatchNorm1d(2048)
-        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
         self.l_final = nn.Linear(2048, int(np.prod(img_shape)))
         self.dropout = nn.Dropout(p=0.3)
 
@@ -61,7 +61,7 @@ class Generator(nn.Module):
         x = self.activation(x)
         x = self.n3(x)
         x = self.l_final(x)
-        x = self.sigmoid(x)
+        x = self.tanh(x)
         return x.reshape(-1, 1, self.img_shape[1], self.img_shape[2])
 
 

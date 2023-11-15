@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -7,17 +8,18 @@ import torchvision.utils as vutils
 import wandb
 from layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation, GeneratorMNIST, DiscriminatorMNIST
 from reader import Reader
+from pure_gan.utils import check_and_create_dir
 
 class Trainer:
-    def __init__(self, device='cpu', 
-                 generator="normal", 
-                 discriminator="normal", 
-                 lr=0.0001, 
-                 img_size=64, 
-                 channel=3, 
-                 log=False):
-        
-        self.device = device
+    def __init__(self, args):
+
+        # args.device, args.generator_type, args.discriminator_type, args.learning_rate      
+        self.args = args
+        self.device = args.device
+        generator = args.generator_type
+        discriminator = args.discriminator_type
+        lr = args.learning_rate
+
         self.criterion = nn.BCELoss()
         self.channel = channel
         self.img_size = img_size
@@ -56,12 +58,15 @@ class Trainer:
         self.D_losses = []
 
     def train_loop(self,
-                   dataloader,
-                   num_epochs=1,
-                   noise_size=100,
-                   b_size=32,
-                   D_G_train_proportion=3):
+                   dataloader):
         
+        # Set up variables
+        num_epochs = self.args.epochs
+        noise_size = self.args.noise_size
+        b_size = self.args.batch_size
+        D_G_train_proportion = self.args.proportion
+        log = True if self.args.key is not None else False
+
         fixed_noise = torch.randn(b_size, noise_size, 1, 1, device=self.device)
 
         # Lists to keep track of progress
@@ -148,6 +153,12 @@ class Trainer:
                 self.G_losses.append(errG.item())
                 self.D_losses.append(errD.item())
 
+                if log:
+                    wandb.log({
+                        "g_loss": errG.item(),
+                        "d_loss": errD.item(),
+                    })
+
                 # print("Generating on fixed noise...")
                 # Check how the generator is doing by saving G's output on fixed_noise
                 if (iters % 10 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
@@ -157,6 +168,7 @@ class Trainer:
 
                 iters += 1
 
+            # TODO: Add options to save model after number of epoch
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--epochs", help="number of epochs", type=int, default=10)
@@ -170,6 +182,11 @@ if __name__=="__main__":
     parser.add_argument("d", "--device", help="cpu or cuda?", type=str, default="cpu")
     parser.add_argument("-dr", "--data_root", help="data root", type=str, required=True)
     parser.add_argument("-k","--key",help="key of wandb", type=str, default=None)
+    parser.add_argument("-o","--output_dir", help="directory of the output", type=str, default="output_models")
+    parser.add_argument("-s","--save_model", help="save model or not?", action='store_true')
+    parser.add_argument("-nk","--num_workers", help="number of worker cpu", type=int, default=2)
+    parser.add_argument("-sf","--save_frequency", help="frequency of saving model", type = int, default=3)
+    
 
     log = False
     if args.key is not None:
@@ -188,6 +205,6 @@ if __name__=="__main__":
         )
         log = True
 
-    trainer = Trainer(args.device, args.generator_type, args.discriminator_type, args.learning_rate)
-    dataloader = Reader(args.data_root)
-    trainer.train_loop(dataloader, args.epochs, args.img_size, args.noise_size, args.batch_size, 3, args.proportion, log)
+    trainer = Trainer(args)
+    dataloader = Reader(args.data_root, args.batch_size, args.num_workers, args.image_size)
+    trainer.train_loop(dataloader)
