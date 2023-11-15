@@ -4,7 +4,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 
 def convert_dataloader_to_sample(dataloader):
     for i, batch_data in enumerate(dataloader):
-        if i < 16:
+        if i < 4:
             if i == 0:
                 gt = batch_data[0]
             else: 
