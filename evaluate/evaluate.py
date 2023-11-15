@@ -10,6 +10,9 @@ def convert_dataloader_to_sample(dataloader):
             else: 
                 gt = torch.vstack((gt, batch_data[0]))
 
+def convert_rgb(tensor):
+    return tensor.type(torch.uint8).repeat(1, 3, 1, 1)
+
 def kernel_inception_distance(prediction, gt):
     kid = KernelInceptionDistance(subset_size=1)
     kid.update(prediction, real=False)
