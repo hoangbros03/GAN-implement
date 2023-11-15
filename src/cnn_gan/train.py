@@ -50,7 +50,8 @@ class Trainer:
         # Setup Adam optimizers for both G and D
         self.optimizerD = optim.Adam(self.netD.parameters(), lr=lr, betas=(0.5, 0.999))
         self.optimizerG = optim.Adam(self.netG.parameters(), lr=lr, betas=(0.5, 0.999))
-
+        
+        self.pred = []
         self.img_list = []
         self.G_losses = []
         self.D_losses = []
@@ -154,40 +155,6 @@ class Trainer:
                     with torch.no_grad():
                         fake = self.netG(fixed_noise).detach().cpu()
                     self.img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
+                    self.pred.append(self.netG(torch.randn(512, noise_size, 1, 1, device=self.device)).detach().cpu())
 
                 iters += 1
-
-if __name__=="__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--epochs", help="number of epochs", type=int, default=10)
-    parser.add_argument("-i", "--image_size", help="size of the images", type=int, default=64)
-    parser.add_argument("-b", "--batch_size", help="batch size", type=int, default=32)
-    parser.add_argument("-n", "--noise_size", help="noise size", type=int, default=100)
-    parser.add_argument("-lr", "--learning_rate", help="learning rate", type=float, default=0.0001)
-    parser.add_argument("-p", "--proportion", help="proportion between D and G", type=int, default=3)
-    parser.add_argument("-dt", "--discriminator_type", help="type of discriminator", type=str, default="normal")
-    parser.add_argument("-gt", "--generator_type", help="type of generator", type=str, default="normal")
-    parser.add_argument("d", "--device", help="cpu or cuda?", type=str, default="cpu")
-    parser.add_argument("-dr", "--data_root", help="data root", type=str, required=True)
-    parser.add_argument("-k","--key",help="key of wandb", type=str, default=None)
-
-    log = False
-    if args.key is not None:
-        # Wandb
-        wandb.login(key=args.key)
-        run = wandb.init(
-            # Set the project where this run will be logged
-            project="unet-gan",
-            # Track hyperparameters and run metadata
-            config={
-                "learning_rate": args.learning_rate,
-                "epochs": args.epochs,
-                "discriminator_type": args.discriminator_type,
-                "generator_type": args.generator_type,
-            },
-        )
-        log = True
-
-    trainer = Trainer(args.device, args.generator_type, args.discriminator_type, args.learning_rate)
-    dataloader = Reader(args.data_root)
-    trainer.train_loop(dataloader, args.epochs, args.img_size, args.noise_size, args.batch_size, 3, args.proportion, log)
