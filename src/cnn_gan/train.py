@@ -170,7 +170,14 @@ class Trainer:
 
                 iters += 1
 
-            # TODO: Add options to save model after number of epoch
+            if self.args.save_model:
+                if (epoch+1)%self.args.save_frequency==0 or epoch == num_epochs-1:
+                    check_and_create_dir(self.args.output_dir)
+                    torch.save(
+                        self.netG.state_dict(),
+                        f"{self.args.output_dir}/{str(self.args.generator_type)}_{str(self.args.discriminator_type)}_{str(epoch+1)}.pth"
+                    )
+
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--epochs", help="number of epochs", type=int, default=10)
@@ -196,7 +203,7 @@ if __name__=="__main__":
         wandb.login(key=args.key)
         run = wandb.init(
             # Set the project where this run will be logged
-            project="unet-gan",
+            project="cnn-gan",
             # Track hyperparameters and run metadata
             config={
                 "learning_rate": args.learning_rate,
