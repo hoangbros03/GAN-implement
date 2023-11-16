@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils as vutils
 import wandb
-from layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation, GeneratorMNIST, DiscriminatorMNIST
-from reader import Reader
+from cnn_gan.layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation, GeneratorMNIST, DiscriminatorMNIST
+from cnn_gan.reader import Reader
 from pure_gan.utils import check_and_create_dir
 
 class Trainer:
@@ -19,29 +19,31 @@ class Trainer:
         generator = args.generator_type
         discriminator = args.discriminator_type
         lr = args.learning_rate
+        channel = args.channel
+
 
         self.criterion = nn.BCELoss()
         self.channel = channel
-        self.img_size = img_size
+        self.img_size = args.image_size
         if generator == "normal":
-            self.netG = Generator(img_size=img_size,
-                                  channel=channel).to(device)
+            self.netG = Generator(img_size=args.image_size,
+                                  channel=channel).to(self.device)
         elif generator == "mnist":
-            self.netG = GeneratorMNIST(img_size=img_size,
-                                       channel=channel).to(device)
+            self.netG = GeneratorMNIST(img_size=args.image_size,
+                                       channel=channel).to(self.device)
         elif generator == "ablation":
-            self.netG = Generator_Ablation().to(device)
+            self.netG = Generator_Ablation().to(self.device)
         else:
             raise ValueError("generator must be either normal or ablation")
 
         if discriminator == "normal":
-            self.netD = Discriminator(img_size=img_size,
-                                      channel=channel).to(device)
+            self.netD = Discriminator(img_size=args.image_size,
+                                      channel=channel).to(self.device)
         elif discriminator == "mnist":
-            self.netD = DiscriminatorMNIST(img_size=img_size,
-                                           channel=channel).to(device)
+            self.netD = DiscriminatorMNIST(img_size=args.image_size,
+                                           channel=channel).to(self.device)
         elif discriminator == "ablation":
-            self.netD = Discriminator_Ablation().to(device)
+            self.netD = Discriminator_Ablation().to(self.device)
         else:
             raise ValueError("discriminator must be either normal or ablation")
 
@@ -186,7 +188,7 @@ if __name__=="__main__":
     parser.add_argument("-s","--save_model", help="save model or not?", action='store_true')
     parser.add_argument("-nk","--num_workers", help="number of worker cpu", type=int, default=2)
     parser.add_argument("-sf","--save_frequency", help="frequency of saving model", type = int, default=3)
-    
+    args = parser.parse_args()
 
     log = False
     if args.key is not None:

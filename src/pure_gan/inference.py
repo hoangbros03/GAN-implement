@@ -7,11 +7,11 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import torchvision.utils as vutils
-from models import Generator
-from utils import check_and_create_dir
+from pure_gan.models import Generator
+from pure_gan.utils import check_and_create_dir
 
 # TODO: Add inference for cnn_gan
-def inference(model_file, args):
+def inference(args):
     """Inference function to get generated image
 
     Args:
@@ -24,6 +24,7 @@ def inference(model_file, args):
     """
     # Get params: model_type, latent_dim, img_shape, device, amount, image_path
     if args is not None:
+        model_file = args.model
         model_type = args.model_type
         latent_dim = args.latent_dim
         img_shape = args.img_shape
@@ -45,10 +46,13 @@ def inference(model_file, args):
         print(imgs.shape)
 
         # Export the image
-        img_to_export = vutils.make_grid(fake, padding=2, normalize=True)
+        img_to_export = vutils.make_grid(imgs, padding=2, normalize=True)
         plt.figure(figsize=(15, 15))
         plt.axis("off")
         plt.title("Generated Images")
+        with open("_debug_img.txt", "a") as f:
+            f.write(str(np.transpose(img_to_export,(1,2,0))))
+        print(np.transpose(img_to_export,(1,2,0)).shape)
         plt.imshow(np.transpose(img_to_export,(1,2,0)))
         plt.savefig(image_path)
 
@@ -73,13 +77,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-ld", "--latent_dim", type=int, default=100, help="Latent dim of input vector"
     )
+    parser.add_argument(
+        "-mt", "--model_type", help="Type of model", type=str, default="pure_mnist"
+    )
     args = parser.parse_args()
+    args.img_shape = (1,28,28)
     check_and_create_dir(args.image_path)
     inference(
-        args.model,
-        args.latent_dim,
-        (1, 28, 28),
-        args.device,
-        args.amount,
-        args.image_path,
+        args
     )

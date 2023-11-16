@@ -3,7 +3,7 @@ File to get MNIST dataloader
 """
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader
-from utils import check_and_create_dir
+from pure_gan.utils import check_and_create_dir
 
 
 def check_and_process_dataloader(directory, img_shape, batch_size):
