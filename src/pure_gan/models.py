@@ -24,7 +24,7 @@ class Generator(nn.Module):
         if activation == "ReLU":
             self.activation = nn.ReLU()
         elif activation == "LeakyReLU":
-            self.activation = nn.LeakyReLU()
+            self.activation = nn.LeakyReLU(0.2)
         else:
             self.activation = nn.Sigmoid()
 
@@ -52,11 +52,11 @@ class Generator(nn.Module):
         x = self.l2(x)
         x = self.activation(x)
         # x = self.n1(x)
-        x = self.dropout(x)
+      
         x = self.l3(x)
         x = self.activation(x)
         # x = self.n2(x)
-        x = self.dropout(x)
+    
         x = self.l4(x)
         x = self.activation(x)
         # x = self.n3(x)

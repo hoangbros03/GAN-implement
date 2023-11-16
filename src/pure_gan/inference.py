@@ -2,6 +2,7 @@
 File to get generated images
 """
 import argparse
+import logging
 
 import numpy as np
 import torch
@@ -9,6 +10,8 @@ import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 from pure_gan.models import Generator
 from pure_gan.utils import check_and_create_dir
+
+
 
 # TODO: Add inference for cnn_gan
 def inference(args):
@@ -54,7 +57,12 @@ def inference(args):
             f.write(str(np.transpose(img_to_export,(1,2,0))))
         print(np.transpose(img_to_export,(1,2,0)).shape)
         plt.imshow(np.transpose(img_to_export,(1,2,0)))
-        plt.savefig(f"{image_path}/image.png")
+
+        name_model = model_file.split("/")[-1]
+        file_name = f"{image_path}/{name_model}_image.png"
+        plt.savefig(file_name)
+        print(f"Save successfully as: {file_name}")
+        
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
