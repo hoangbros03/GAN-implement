@@ -9,6 +9,7 @@ import wandb
 from cnn_gan.layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation, GeneratorMNIST, DiscriminatorMNIST
 from cnn_gan.reader import Reader
 from pure_gan.utils import check_and_create_dir
+from pure_gan.mnist_dataloader import check_and_process_dataloader
 
 class Trainer:
     def __init__(self, args):
@@ -25,6 +26,7 @@ class Trainer:
         self.criterion = nn.BCELoss()
         self.channel = channel
         self.img_size = args.image_size
+        args.image_size = int(args.image_size)
         if generator == "normal":
             self.netG = Generator(img_size=args.image_size,
                                   channel=channel).to(self.device)
@@ -98,6 +100,7 @@ class Trainer:
                     output = self.netD(real_cpu).squeeze()
                     # Calculate loss on all-real batch
                     # print("Calculating loss...")
+                    # print(f"Shape: Output: {output.shape}, label: {label.shape}")
                     errD_real = self.criterion(output, label)
                     # Calculate gradients for D in backward pass
                     errD_real.backward()
@@ -110,12 +113,14 @@ class Trainer:
                     # Generate fake image batch with G
                     # print("Generating...")
                     fake = self.netG(noise)
+                    # print(f"Fake shape: {fake.shape}")
                     label.fill_(self.fake_label)
                     # Classify all fake batch with D
                     # print("Classfying with D...")
                     output = self.netD(fake.detach()).view(-1)
                     # Calculate D's loss on the all-fake batch
                     # print("Calculating loss...")
+                    # print(f"Shape: Output: {output.shape}, label: {label.shape}")
                     errD_fake = self.criterion(output, label)
                     # Calculate the gradients for this batch, accumulated (summed) with previous gradients
                     # print("Backward pass...")
@@ -163,7 +168,8 @@ class Trainer:
 
                 # print("Generating on fixed noise...")
                 # Check how the generator is doing by saving G's output on fixed_noise
-                if (iters % 10 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
+                # Reduce time append to save the ram usage
+                if (iters % 10 == 0) and ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
                     with torch.no_grad():
                         fake = self.netG(fixed_noise).detach().cpu()
                     self.img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
@@ -188,13 +194,14 @@ if __name__=="__main__":
     parser.add_argument("-p", "--proportion", help="proportion between D and G", type=int, default=3)
     parser.add_argument("-dt", "--discriminator_type", help="type of discriminator", type=str, default="normal")
     parser.add_argument("-gt", "--generator_type", help="type of generator", type=str, default="normal")
-    parser.add_argument("d", "--device", help="cpu or cuda?", type=str, default="cpu")
+    parser.add_argument("-d", "--device", help="cpu or cuda?", type=str, default="cpu")
     parser.add_argument("-dr", "--data_root", help="data root", type=str, required=True)
     parser.add_argument("-k","--key",help="key of wandb", type=str, default=None)
     parser.add_argument("-o","--output_dir", help="directory of the output", type=str, default="output_models")
     parser.add_argument("-s","--save_model", help="save model or not?", action='store_true')
     parser.add_argument("-nk","--num_workers", help="number of worker cpu", type=int, default=2)
     parser.add_argument("-sf","--save_frequency", help="frequency of saving model", type = int, default=3)
+    parser.add_argument("-c","--channel", help="number of channel in the image", type=int, default=3)
     args = parser.parse_args()
 
     log = False
@@ -215,5 +222,8 @@ if __name__=="__main__":
         log = True
 
     trainer = Trainer(args)
-    dataloader = Reader(args.data_root, args.batch_size, args.num_workers, args.image_size)
+    if args.discriminator_type != "mnist":
+        dataloader = Reader(args.data_root, args.batch_size, args.num_workers, args.image_size).path_to_dataloader()
+    else:
+        dataloader = check_and_process_dataloader("mnist", (1, 28, 28), 32)
     trainer.train_loop(dataloader)

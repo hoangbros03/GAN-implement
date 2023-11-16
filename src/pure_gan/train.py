@@ -41,12 +41,34 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
     g_optimizer = Adam(generator_model.parameters(), lr=learning_rate)
     d_optimizer = Adam(disciminator_model.parameters(), lr=learning_rate)
 
-    generator_model.train()
-    disciminator_model.train()
+    
     for epoch in range(epochs):
         imgs = None
-        for _, (imgs, _) in enumerate(dataloader):
-            imgs = imgs.reshape((-1, img_shape[1], img_shape[2])).to(device)
+        for ite, (imgs, _) in enumerate(dataloader):
+            generator_model.train()
+            disciminator_model.train()
+            imgs = imgs.reshape((-1,1, img_shape[1], img_shape[2])).to(device)
+            # print(imgs.shape)
+            if ite % 3 ==0:
+                # Get ground truth
+                real_ground_truth = 0.3 * torch.rand(imgs.shape[0], 1) + 0.7
+                real_ground_truth = real_ground_truth.to(device)
+                fake_ground_truth = 0.3 * torch.rand(imgs.shape[0], 1)
+                fake_ground_truth = fake_ground_truth.to(device)
+
+                # Train discriminator
+                d_optimizer.zero_grad()
+                latent_space = torch.randn(imgs.shape[0], latent_dim) * 1.0
+                fake_samples = generator_model(latent_space.to(device))
+                # print(f"Fake sample shape: {fake_samples.shape}")
+                real_loss = value_function_loss(disciminator_model(imgs), real_ground_truth)
+                fake_loss = value_function_loss(
+                    disciminator_model(fake_samples), fake_ground_truth
+                )
+                d_loss = (real_loss + fake_loss) / 2
+                d_loss.backward()
+                d_optimizer.step()
+            
 
             # Train the generator
             g_optimizer.zero_grad()
@@ -59,24 +81,7 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
             )
             g_loss.backward()
             g_optimizer.step()
-        # Get ground truth
-        real_ground_truth = 0.3 * torch.rand(imgs.shape[0], 1) + 0.7
-        real_ground_truth = real_ground_truth.to(device)
-        fake_ground_truth = 0.3 * torch.rand(imgs.shape[0], 1)
-        fake_ground_truth = fake_ground_truth.to(device)
-
-        # Train discriminator
-        d_optimizer.zero_grad()
-        latent_space = torch.randn(imgs.shape[0], latent_dim) * 1.0
-        fake_samples = generator_model(latent_space.to(device))
-
-        real_loss = value_function_loss(disciminator_model(imgs), real_ground_truth)
-        fake_loss = value_function_loss(
-            disciminator_model(fake_samples), fake_ground_truth
-        )
-        d_loss = (real_loss + fake_loss) / 2
-        d_loss.backward()
-        d_optimizer.step()
+        
 
         print(
             f"Epoch: {epoch}/{epochs}, g_loss: {g_loss.item()}, d_loss: {d_loss.item()}"
@@ -91,7 +96,7 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
         )
 
         # Output the model
-        if (epoch + 1) % 50 == 0:
+        if (epoch + 1) % 10 == 0:
             torch.save(
                 generator_model.state_dict(),
                 f"{output_model_dir}/{str(code_random)}_{str(epoch+1)}.pth",

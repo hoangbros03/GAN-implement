@@ -54,7 +54,7 @@ def inference(args):
             f.write(str(np.transpose(img_to_export,(1,2,0))))
         print(np.transpose(img_to_export,(1,2,0)).shape)
         plt.imshow(np.transpose(img_to_export,(1,2,0)))
-        plt.savefig(image_path)
+        plt.savefig(f"{image_path}/image.png")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
