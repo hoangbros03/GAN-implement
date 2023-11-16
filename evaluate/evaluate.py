@@ -3,6 +3,7 @@ from torchmetrics.image.kid import KernelInceptionDistance
 from torchmetrics.image.fid import FrechetInceptionDistance
 
 def convert_dataloader_to_sample(dataloader):
+    # batch size = 128
     for i, batch_data in enumerate(dataloader):
         if i < 4:
             if i == 0:
