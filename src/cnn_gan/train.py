@@ -56,7 +56,8 @@ class Trainer:
         # Setup Adam optimizers for both G and D
         self.optimizerD = optim.Adam(self.netD.parameters(), lr=lr, betas=(0.5, 0.999))
         self.optimizerG = optim.Adam(self.netG.parameters(), lr=lr, betas=(0.5, 0.999))
-
+        
+        self.pred = []
         self.img_list = []
         self.G_losses = []
         self.D_losses = []
@@ -173,6 +174,7 @@ class Trainer:
                     with torch.no_grad():
                         fake = self.netG(fixed_noise).detach().cpu()
                     self.img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
+                    self.pred.append(self.netG(torch.randn(128, noise_size, 1, 1, device=self.device)).detach().cpu())
 
                 iters += 1
 
