@@ -109,7 +109,7 @@ class Generator_Ablation(nn.Module):
                  img_size=64, 
                  channel=3):
         
-        super(Generator, self).__init__()
+        super(Generator_Ablation, self).__init__()
         self.ns = noise_size
         self.imgs = img_size
         self.c = channel
@@ -132,7 +132,7 @@ class Generator_Ablation(nn.Module):
 
 class Discriminator_Ablation(nn.Module):
     def __init__(self, img_size=64):
-        super(Discriminator, self).__init__()
+        super(Discriminator_Ablation, self).__init__()
         self.main = nn.Sequential(
             nn.Conv2d(3, img_size, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),

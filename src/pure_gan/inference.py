@@ -2,15 +2,19 @@
 File to get generated images
 """
 import argparse
+import logging
 
 import numpy as np
 import torch
-from PIL import Image
-from models import Generator
-from utils import check_and_create_dir
+import matplotlib.pyplot as plt
+import torchvision.utils as vutils
+from pure_gan.models import Generator
+from pure_gan.utils import check_and_create_dir
 
 
-def inference(model_file, latent_dim, img_shape, device, amount, image_path):
+
+# TODO: Add inference for cnn_gan
+def inference(args):
     """Inference function to get generated image
 
     Args:
@@ -21,23 +25,44 @@ def inference(model_file, latent_dim, img_shape, device, amount, image_path):
         amount (int): Number of images that you want to generate
         image_path (str): Folder containing generated images
     """
-    # Load model
-    model = Generator(latent_dim, img_shape).to(device)
-    model.load_state_dict(torch.load(model_file))
+    # Get params: model_type, latent_dim, img_shape, device, amount, image_path
+    if args is not None:
+        model_file = args.model
+        model_type = args.model_type
+        latent_dim = args.latent_dim
+        img_shape = args.img_shape
+        device = args.device
+        amount = args.amount
+        image_path = args.image_path
+    else:
+        raise ValueError("Args is none!")
 
-    # Get result
-    model.eval()
-    sample = torch.randn(amount, latent_dim) * 1.0
-    img = model.forward(sample.to(device))
-    print(img.shape)
+    if model_type=="pure_mnist":
+        # Load model
+        model = Generator(latent_dim, img_shape).to(device)
+        model.load_state_dict(torch.load(model_file))
 
-    # Export the image
-    img *= 255
-    img = img.cpu().detach().numpy().astype(np.uint8)
-    for i in range(amount):
-        this_img = Image.fromarray(img[i])
-        this_img.save(f"{image_path}/{model_file.split('/')[-1][:-4]}_{i}.png")
+        # Get result
+        model.eval()
+        sample = torch.randn(amount, latent_dim) * 1.0
+        imgs = model.forward(sample.to(device)).detach().cpu()
+        print(imgs.shape)
 
+        # Export the image
+        img_to_export = vutils.make_grid(imgs, padding=2, normalize=True)
+        plt.figure(figsize=(15, 15))
+        plt.axis("off")
+        plt.title("Generated Images")
+        with open("_debug_img.txt", "a") as f:
+            f.write(str(np.transpose(img_to_export,(1,2,0))))
+        print(np.transpose(img_to_export,(1,2,0)).shape)
+        plt.imshow(np.transpose(img_to_export,(1,2,0)))
+
+        name_model = model_file.split("/")[-1]
+        file_name = f"{image_path}/{name_model}_image.png"
+        plt.savefig(file_name)
+        print(f"Save successfully as: {file_name}")
+        
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -60,13 +85,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-ld", "--latent_dim", type=int, default=100, help="Latent dim of input vector"
     )
+    parser.add_argument(
+        "-mt", "--model_type", help="Type of model", type=str, default="pure_mnist"
+    )
     args = parser.parse_args()
+    args.img_shape = (1,28,28)
     check_and_create_dir(args.image_path)
     inference(
-        args.model,
-        args.latent_dim,
-        (1, 28, 28),
-        args.device,
-        args.amount,
-        args.image_path,
+        args
     )

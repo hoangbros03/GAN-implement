@@ -1,45 +1,51 @@
 import argparse
+from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils as vutils
 import wandb
-from layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation, GeneratorMNIST, DiscriminatorMNIST
-from reader import Reader
+from cnn_gan.layers import Discriminator, Generator, Generator_Ablation, Discriminator_Ablation, GeneratorMNIST, DiscriminatorMNIST
+from cnn_gan.reader import Reader
+from pure_gan.utils import check_and_create_dir
+from pure_gan.mnist_dataloader import check_and_process_dataloader
 
 class Trainer:
-    def __init__(self, device='cpu', 
-                 generator="normal", 
-                 discriminator="normal", 
-                 lr=0.0001, 
-                 img_size=64, 
-                 channel=3, 
-                 log=False):
-        
-        self.device = device
+    def __init__(self, args):
+
+        # args.device, args.generator_type, args.discriminator_type, args.learning_rate      
+        self.args = args
+        self.device = args.device
+        generator = args.generator_type
+        discriminator = args.discriminator_type
+        lr = args.learning_rate
+        channel = args.channel
+
+
         self.criterion = nn.BCELoss()
         self.channel = channel
-        self.img_size = img_size
+        self.img_size = args.image_size
+        args.image_size = int(args.image_size)
         if generator == "normal":
-            self.netG = Generator(img_size=img_size,
-                                  channel=channel).to(device)
+            self.netG = Generator(img_size=args.image_size,
+                                  channel=channel).to(self.device)
         elif generator == "mnist":
-            self.netG = GeneratorMNIST(img_size=img_size,
-                                       channel=channel).to(device)
+            self.netG = GeneratorMNIST(img_size=args.image_size,
+                                       channel=channel).to(self.device)
         elif generator == "ablation":
-            self.netG = Generator_Ablation().to(device)
+            self.netG = Generator_Ablation().to(self.device)
         else:
             raise ValueError("generator must be either normal or ablation")
 
         if discriminator == "normal":
-            self.netD = Discriminator(img_size=img_size,
-                                      channel=channel).to(device)
+            self.netD = Discriminator(img_size=args.image_size,
+                                      channel=channel).to(self.device)
         elif discriminator == "mnist":
-            self.netD = DiscriminatorMNIST(img_size=img_size,
-                                           channel=channel).to(device)
+            self.netD = DiscriminatorMNIST(img_size=args.image_size,
+                                           channel=channel).to(self.device)
         elif discriminator == "ablation":
-            self.netD = Discriminator_Ablation().to(device)
+            self.netD = Discriminator_Ablation().to(self.device)
         else:
             raise ValueError("discriminator must be either normal or ablation")
 
@@ -57,12 +63,15 @@ class Trainer:
         self.D_losses = []
 
     def train_loop(self,
-                   dataloader,
-                   num_epochs=1,
-                   noise_size=100,
-                   b_size=32,
-                   D_G_train_proportion=3):
+                   dataloader):
         
+        # Set up variables
+        num_epochs = self.args.epochs
+        noise_size = self.args.noise_size
+        b_size = self.args.batch_size
+        D_G_train_proportion = self.args.proportion
+        log = True if self.args.key is not None else False
+
         fixed_noise = torch.randn(b_size, noise_size, 1, 1, device=self.device)
 
         # Lists to keep track of progress
@@ -92,6 +101,7 @@ class Trainer:
                     output = self.netD(real_cpu).squeeze()
                     # Calculate loss on all-real batch
                     # print("Calculating loss...")
+                    # print(f"Shape: Output: {output.shape}, label: {label.shape}")
                     errD_real = self.criterion(output, label)
                     # Calculate gradients for D in backward pass
                     errD_real.backward()
@@ -104,12 +114,14 @@ class Trainer:
                     # Generate fake image batch with G
                     # print("Generating...")
                     fake = self.netG(noise)
+                    # print(f"Fake shape: {fake.shape}")
                     label.fill_(self.fake_label)
                     # Classify all fake batch with D
                     # print("Classfying with D...")
                     output = self.netD(fake.detach()).view(-1)
                     # Calculate D's loss on the all-fake batch
                     # print("Calculating loss...")
+                    # print(f"Shape: Output: {output.shape}, label: {label.shape}")
                     errD_fake = self.criterion(output, label)
                     # Calculate the gradients for this batch, accumulated (summed) with previous gradients
                     # print("Backward pass...")
@@ -149,12 +161,71 @@ class Trainer:
                 self.G_losses.append(errG.item())
                 self.D_losses.append(errD.item())
 
+                if log:
+                    wandb.log({
+                        "g_loss": errG.item(),
+                        "d_loss": errD.item(),
+                    })
+
                 # print("Generating on fixed noise...")
                 # Check how the generator is doing by saving G's output on fixed_noise
-                if (iters % 10 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
+                # Reduce time append to save the ram usage
+                if (iters % 10 == 0) and ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
                     with torch.no_grad():
                         fake = self.netG(fixed_noise).detach().cpu()
                     self.img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
                     self.pred.append(self.netG(torch.randn(128, noise_size, 1, 1, device=self.device)).detach().cpu())
 
                 iters += 1
+
+            if self.args.save_model:
+                if (epoch+1)%self.args.save_frequency==0 or epoch == num_epochs-1:
+                    check_and_create_dir(self.args.output_dir)
+                    torch.save(
+                        self.netG.state_dict(),
+                        f"{self.args.output_dir}/{str(self.args.generator_type)}_{str(self.args.discriminator_type)}_{str(epoch+1)}.pth"
+                    )
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-e", "--epochs", help="number of epochs", type=int, default=10)
+    parser.add_argument("-i", "--image_size", help="size of the images", type=int, default=64)
+    parser.add_argument("-b", "--batch_size", help="batch size", type=int, default=32)
+    parser.add_argument("-n", "--noise_size", help="noise size", type=int, default=100)
+    parser.add_argument("-lr", "--learning_rate", help="learning rate", type=float, default=0.0001)
+    parser.add_argument("-p", "--proportion", help="proportion between D and G", type=int, default=3)
+    parser.add_argument("-dt", "--discriminator_type", help="type of discriminator", type=str, default="normal")
+    parser.add_argument("-gt", "--generator_type", help="type of generator", type=str, default="normal")
+    parser.add_argument("-d", "--device", help="cpu or cuda?", type=str, default="cpu")
+    parser.add_argument("-dr", "--data_root", help="data root", type=str, required=True)
+    parser.add_argument("-k","--key",help="key of wandb", type=str, default=None)
+    parser.add_argument("-o","--output_dir", help="directory of the output", type=str, default="output_models")
+    parser.add_argument("-s","--save_model", help="save model or not?", action='store_true')
+    parser.add_argument("-nk","--num_workers", help="number of worker cpu", type=int, default=2)
+    parser.add_argument("-sf","--save_frequency", help="frequency of saving model", type = int, default=3)
+    parser.add_argument("-c","--channel", help="number of channel in the image", type=int, default=3)
+    args = parser.parse_args()
+
+    log = False
+    if args.key is not None:
+        # Wandb
+        wandb.login(key=args.key)
+        run = wandb.init(
+            # Set the project where this run will be logged
+            project="cnn-gan",
+            # Track hyperparameters and run metadata
+            config={
+                "learning_rate": args.learning_rate,
+                "epochs": args.epochs,
+                "discriminator_type": args.discriminator_type,
+                "generator_type": args.generator_type,
+            },
+        )
+        log = True
+
+    trainer = Trainer(args)
+    if args.discriminator_type != "mnist":
+        dataloader = Reader(args.data_root, args.batch_size, args.num_workers, args.image_size).path_to_dataloader()
+    else:
+        dataloader = check_and_process_dataloader("mnist", (1, 28, 28), 32)
+    trainer.train_loop(dataloader)
