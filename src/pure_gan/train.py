@@ -7,9 +7,9 @@ import datetime
 import torch
 from torch import nn
 from torch.optim import Adam
-from models import Generator, Discriminator
-from utils import check_and_create_dir, get_random_string
-from mnist_dataloader import check_and_process_dataloader
+from pure_gan.models import Generator, Discriminator
+from pure_gan.utils import check_and_create_dir, get_random_string
+from pure_gan.mnist_dataloader import check_and_process_dataloader
 import wandb
 
 
@@ -32,7 +32,7 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Loss and model
-    value_function_loss = nn.BCELoss()
+   
     generator_model = Generator(latent_dim, img_shape, activation="LeakyReLU").to(
         device
     )
@@ -41,57 +41,73 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
     g_optimizer = Adam(generator_model.parameters(), lr=0.0002)
     d_optimizer = Adam(disciminator_model.parameters(), lr=0.0002)
 
+    value_function_loss = nn.BCELoss()
+
+    def train_discriminator():
+        # Get ground truth
+        real_ground_truth = 0.3 * torch.rand(imgs.shape[0]) + 0.7
+        real_ground_truth = real_ground_truth.to(device)
+        fake_ground_truth = 0.3 * torch.rand(imgs.shape[0])
+        fake_ground_truth = fake_ground_truth.to(device)
+
+        # Train discriminator
+        d_optimizer.zero_grad()
+
+        output_real = disciminator_model(imgs).view(-1)
+        real_loss = value_function_loss(output_real, real_ground_truth)
+
+        latent_space = torch.randn(imgs.shape[0], latent_dim).to(device)
+        fake_samples = generator_model(latent_space).detach()
+        output_fake = disciminator_model(fake_samples).view(-1)
+        # print(f"Fake sample shape: {fake_samples.shape}")
+        fake_loss = value_function_loss(
+            output_fake, fake_ground_truth
+        )
+        real_loss.backward()
+        fake_loss.backward()
+        d_optimizer.step()
+        return real_loss + fake_loss
+
+    def train_generator():
+        g_optimizer.zero_grad()
+        real_ground_truth = 0.3 * torch.rand(imgs.shape[0]) + 0.7
+        real_ground_truth = real_ground_truth.to(device)
+        latent_space = torch.randn(imgs.shape[0], latent_dim) * 1.0
+        fake_samples = generator_model(latent_space.to(device))
+        g_loss = value_function_loss(
+            disciminator_model(fake_samples).view(-1), real_ground_truth
+        )
+        g_loss.backward()
+        g_optimizer.step()
+
+        return g_loss
     
     for epoch in range(epochs):
         imgs = None
+        total_loss_d = 0.0
+        total_loss_g = 0.0
         for ite, (imgs, _) in enumerate(dataloader):
             generator_model.train()
             disciminator_model.train()
             imgs = imgs.reshape((-1,1, img_shape[1], img_shape[2])).to(device)
             # print(imgs.shape)
-            if ite % 3 ==0:
-                # Get ground truth
-                real_ground_truth = 0.3 * torch.rand(imgs.shape[0]) + 0.7
-                real_ground_truth = real_ground_truth.to(device)
-                fake_ground_truth = 0.3 * torch.rand(imgs.shape[0])
-                fake_ground_truth = fake_ground_truth.to(device)
-
-                # Train discriminator
-                d_optimizer.zero_grad()
-                latent_space = torch.randn(imgs.shape[0], latent_dim) * 1.0
-                fake_samples = generator_model(latent_space.to(device)).detach()
-                # print(f"Fake sample shape: {fake_samples.shape}")
-                real_loss = value_function_loss(disciminator_model(imgs).view(-1), real_ground_truth)
-                fake_loss = value_function_loss(
-                    disciminator_model(fake_samples).view(-1), fake_ground_truth
-                )
-                real_loss.backward()
-                fake_loss.backward()
-                d_optimizer.step()
-            
+            for _ in range(1):
+                # Train the discriminator
+                total_loss_d += train_discriminator()
 
             # Train the generator
-            g_optimizer.zero_grad()
-            real_ground_truth = 0.3 * torch.rand(imgs.shape[0]) + 0.7
-            real_ground_truth = real_ground_truth.to(device)
-            latent_space = torch.randn(imgs.shape[0], latent_dim) * 1.0
-            fake_samples = generator_model(latent_space.to(device))
-            g_loss = value_function_loss(
-                disciminator_model(fake_samples).view(-1), real_ground_truth
-            )
-            g_loss.backward()
-            g_optimizer.step()
+            total_loss_g += train_generator()
         
 
         print(
-            f"Epoch: {epoch}/{epochs}, g_loss: {g_loss.item()}, d_loss: {real_loss.item() + fake_loss.item()}"
+            f"Epoch: {epoch}/{epochs}, g_loss: {total_loss_g/ite}, d_loss: {total_loss_d/ite}"
         )
         wandb.log(
             {
                 "Epoch": epoch,
                 "Total epoch": epochs,
-                "g_loss": g_loss.item(),
-                "d_loss": real_loss.item() + fake_loss.item(),
+                "g_loss": total_loss_g/ite,
+                "d_loss": total_loss_d/ite
             }
         )
 
@@ -101,6 +117,8 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
                 generator_model.state_dict(),
                 f"{output_model_dir}/{str(code_random)}_{str(epoch+1)}.pth",
             )
+
+
 
 
 if __name__ == "__main__":
@@ -143,7 +161,7 @@ if __name__ == "__main__":
     wandb.login()
     run = wandb.init(
         # Set the project where this run will be logged
-        project="pure-gan",
+        project="new-pure-gan",
         # Track hyperparameters and run metadata
         config={
             "learning_rate": args.lr,

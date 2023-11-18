@@ -39,6 +39,16 @@ class Generator(nn.Module):
         self.tanh = nn.Tanh()
         self.l_final = nn.Linear(2048, int(np.prod(img_shape)))
         self.dropout = nn.Dropout(p=0.3)
+        self.main = nn.Sequential(
+            nn.Linear(latent_dim, 256),
+            nn.LeakyReLU(0.2),
+            nn.Linear(256, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 1024),
+            nn.LeakyReLU(0.2),
+            nn.Linear(1024, 784),
+            nn.Tanh(),
+        )
 
     def forward(self, latent_space):
         """Forward function
@@ -46,23 +56,8 @@ class Generator(nn.Module):
         Args:
             latent_space (torch): The latent space
         """
-        x = self.l1(latent_space)
-        x = self.activation(x)
-        # x = self.n0(x)
-        x = self.l2(x)
-        x = self.activation(x)
-        # x = self.n1(x)
-      
-        x = self.l3(x)
-        x = self.activation(x)
-        # x = self.n2(x)
-    
-        x = self.l4(x)
-        x = self.activation(x)
-        # x = self.n3(x)
-        x = self.l_final(x)
-        x = self.tanh(x)
-        return x.reshape(-1, 1, self.img_shape[1], self.img_shape[2])
+        
+        return self.main(latent_space).view(-1, 1, self.img_shape[1], self.img_shape[2])
 
 
 class Discriminator(nn.Module):
@@ -90,14 +85,19 @@ class Discriminator(nn.Module):
         else:
             self.activation = nn.Sigmoid()
 
-        self.l1 = nn.Linear(int(np.prod(img_shape)), 512)
-        self.bn1 = nn.BatchNorm1d(512)
-        self.l2 = nn.Linear(512, 256)
-        self.bn2 = nn.BatchNorm1d(256)
-        self.l3 = nn.Linear(256, 64)
-        self.bn3 = nn.BatchNorm1d(64)
-        self.l4 = nn.Linear(64, 1)
-        self.l_final = nn.Sigmoid()
+        self.main = nn.Sequential(
+            nn.Linear(self.img_shape[1] * self.img_shape[2], 1024),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(1024, 512),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(256, 1),
+            nn.Sigmoid(),
+        )
 
     def forward(self, img):
         """Forward function
@@ -108,16 +108,5 @@ class Discriminator(nn.Module):
         Returns:
             The output of model
         """
-        img = img.reshape(-1, self.img_shape[1] * self.img_shape[2])
-        img = self.l1(img)
-        img = self.activation(img)
-        img = self.bn1(img)
-        img = self.l2(img)
-        img = self.activation(img)
-        img = self.bn2(img)
-        img = self.l3(img)
-        img = self.activation(img)
-        img = self.bn3(img)
-        img = self.l4(img)
-        img = self.l_final(img)
-        return img
+        img = img.view(-1, self.img_shape[1] * self.img_shape[2])
+        return self.main(img)
