@@ -7,10 +7,10 @@ import datetime
 import torch
 from torch import nn
 from torch.optim import Adam
+import wandb
 from pure_gan.models import Generator, Discriminator
 from pure_gan.utils import check_and_create_dir, get_random_string
 from pure_gan.mnist_dataloader import check_and_process_dataloader
-import wandb
 
 
 def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model_dir):
