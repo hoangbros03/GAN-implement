@@ -2,7 +2,6 @@
 File to get generated images
 """
 import argparse
-import logging
 
 import numpy as np
 import torch
@@ -12,8 +11,6 @@ from pure_gan.models import Generator
 from pure_gan.utils import check_and_create_dir
 
 
-
-# TODO: Add inference for cnn_gan
 def inference(args):
     """Inference function to get generated image
 
@@ -37,7 +34,7 @@ def inference(args):
     else:
         raise ValueError("Args is none!")
 
-    if model_type=="pure_mnist":
+    if model_type == "pure_mnist":
         # Load model
         model = Generator(latent_dim, img_shape).to(device)
         model.load_state_dict(torch.load(model_file))
@@ -46,23 +43,24 @@ def inference(args):
         model.eval()
         sample = torch.randn(amount, latent_dim) * 1.0
         imgs = model.forward(sample.to(device)).detach().cpu()
-        print(imgs.shape)
 
         # Export the image
         img_to_export = vutils.make_grid(imgs, padding=2, normalize=True)
         plt.figure(figsize=(15, 15))
         plt.axis("off")
         plt.title("Generated Images")
-        with open("_debug_img.txt", "a") as f:
-            f.write(str(np.transpose(img_to_export,(1,2,0))))
-        print(np.transpose(img_to_export,(1,2,0)).shape)
-        plt.imshow(np.transpose(img_to_export,(1,2,0)))
+        plt.imshow(np.transpose(img_to_export, (1, 2, 0)))
 
         name_model = model_file.split("/")[-1]
         file_name = f"{image_path}/{name_model}_image.png"
         plt.savefig(file_name)
         print(f"Save successfully as: {file_name}")
-        
+    else:
+        raise ValueError(
+            "Currently inference for enhanced GAN is not supported, \
+                         please view the notebook for more information."
+        )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -88,9 +86,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-mt", "--model_type", help="Type of model", type=str, default="pure_mnist"
     )
-    args = parser.parse_args()
-    args.img_shape = (1,28,28)
-    check_and_create_dir(args.image_path)
-    inference(
-        args
-    )
+    input_args = parser.parse_args()
+    input_args.img_shape = (1, 28, 28)
+    check_and_create_dir(input_args.image_path)
+    inference(input_args)

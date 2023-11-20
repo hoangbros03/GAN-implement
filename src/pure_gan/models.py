@@ -28,17 +28,6 @@ class Generator(nn.Module):
         else:
             self.activation = nn.Sigmoid()
 
-        self.l1 = nn.Linear(latent_dim, 128)
-        self.n0 = nn.BatchNorm1d(128)
-        self.l2 = nn.Linear(128, 256)
-        self.n1 = nn.BatchNorm1d(256)
-        self.l3 = nn.Linear(256, 1024)
-        self.n2 = nn.BatchNorm1d(1024)
-        self.l4 = nn.Linear(1024, 2048)
-        self.n3 = nn.BatchNorm1d(2048)
-        self.tanh = nn.Tanh()
-        self.l_final = nn.Linear(2048, int(np.prod(img_shape)))
-        self.dropout = nn.Dropout(p=0.3)
         self.main = nn.Sequential(
             nn.Linear(latent_dim, 256),
             nn.LeakyReLU(0.2),
@@ -46,7 +35,7 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Linear(512, 1024),
             nn.LeakyReLU(0.2),
-            nn.Linear(1024, 784),
+            nn.Linear(1024, int(np.prod(img_shape))),
             nn.Tanh(),
         )
 
@@ -56,7 +45,7 @@ class Generator(nn.Module):
         Args:
             latent_space (torch): The latent space
         """
-        
+
         return self.main(latent_space).view(-1, 1, self.img_shape[1], self.img_shape[2])
 
 
@@ -66,7 +55,7 @@ class Discriminator(nn.Module):
     """
 
     def __init__(self, img_shape, activation="ReLU"):
-        """_summary_ TODO
+        """Constructor of discriminator class
 
         Args:
             img_shape (): shape of image

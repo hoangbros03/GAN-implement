@@ -32,18 +32,23 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Loss and model
-   
+
     generator_model = Generator(latent_dim, img_shape, activation="LeakyReLU").to(
         device
     )
     disciminator_model = Discriminator(img_shape, activation="LeakyReLU").to(device)
 
-    g_optimizer = Adam(generator_model.parameters(), lr=0.0002)
-    d_optimizer = Adam(disciminator_model.parameters(), lr=0.0002)
+    g_optimizer = Adam(generator_model.parameters(), lr=learning_rate)
+    d_optimizer = Adam(disciminator_model.parameters(), lr=learning_rate)
 
     value_function_loss = nn.BCELoss()
 
     def train_discriminator():
+        """Main function to train the discriminator
+
+        Returns:
+            loss of discriminator
+        """
         # Get ground truth
         real_ground_truth = 0.3 * torch.rand(imgs.shape[0]) + 0.7
         real_ground_truth = real_ground_truth.to(device)
@@ -60,15 +65,18 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
         fake_samples = generator_model(latent_space).detach()
         output_fake = disciminator_model(fake_samples).view(-1)
         # print(f"Fake sample shape: {fake_samples.shape}")
-        fake_loss = value_function_loss(
-            output_fake, fake_ground_truth
-        )
+        fake_loss = value_function_loss(output_fake, fake_ground_truth)
         real_loss.backward()
         fake_loss.backward()
         d_optimizer.step()
         return real_loss + fake_loss
 
     def train_generator():
+        """Main function to train the generator
+
+        Returns:
+            loss of generator
+        """
         g_optimizer.zero_grad()
         real_ground_truth = 0.3 * torch.rand(imgs.shape[0]) + 0.7
         real_ground_truth = real_ground_truth.to(device)
@@ -81,15 +89,16 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
         g_optimizer.step()
 
         return g_loss
-    
+
     for epoch in range(epochs):
         imgs = None
         total_loss_d = 0.0
         total_loss_g = 0.0
+        total_ite = 0
         for ite, (imgs, _) in enumerate(dataloader):
             generator_model.train()
             disciminator_model.train()
-            imgs = imgs.reshape((-1,1, img_shape[1], img_shape[2])).to(device)
+            imgs = imgs.reshape((-1, 1, img_shape[1], img_shape[2])).to(device)
             # print(imgs.shape)
             for _ in range(1):
                 # Train the discriminator
@@ -97,17 +106,18 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
 
             # Train the generator
             total_loss_g += train_generator()
-        
-
+            total_ite = ite
+        total_ite += 1
         print(
-            f"Epoch: {epoch}/{epochs}, g_loss: {total_loss_g/ite}, d_loss: {total_loss_d/ite}"
+            f"Epoch: {epoch}/{epochs}, g_loss: {total_loss_g/total_ite}, \
+                d_loss: {total_loss_d/total_ite}"
         )
         wandb.log(
             {
                 "Epoch": epoch,
                 "Total epoch": epochs,
-                "g_loss": total_loss_g/ite,
-                "d_loss": total_loss_d/ite
+                "g_loss": total_loss_g / total_ite,
+                "d_loss": total_loss_d / total_ite,
             }
         )
 
@@ -117,8 +127,6 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
                 generator_model.state_dict(),
                 f"{output_model_dir}/{str(code_random)}_{str(epoch+1)}.pth",
             )
-
-
 
 
 if __name__ == "__main__":
@@ -139,15 +147,11 @@ if __name__ == "__main__":
         "--latent_dim", type=int, default=100, help="dimensionality of the latent space"
     )
     parser.add_argument(
-        "--sample_interval", type=int, default=400, help="interval betwen image samples"
-    )
-    parser.add_argument(
         "--output_model_dir", type=str, default="models", help="Output model dir"
     )
     args = parser.parse_args()
 
     # CONSTANT VARIABLE
-    IMG_SHAPE = (1, 28, 28)
     IMG_SHAPE = (1, 28, 28)
 
     # Create dir
