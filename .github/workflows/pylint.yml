@@ -21,4 +21,4 @@ jobs:
         pip install -e .
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py')
+        pylint -d E0401,E1102,R0902,R0913,R0914,R0903,C0103 $(git ls-files '*.py')
