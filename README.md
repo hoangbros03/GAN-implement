@@ -4,7 +4,7 @@ This repository contains our GAN implementations, reports, and experiment result
 
 # Authors
 
-[Nguyen Binh Nguyen](github.com/nguyenrtm)
+[Nguyen Binh Nguyen](https://github.com/nguyenrtm)
 
 [Tran Ba Hoang](github.com/hoangbros03)
 
