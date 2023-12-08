@@ -23,6 +23,7 @@ def convert_dataloader_to_sample(dataloader):
                 gt = torch.vstack((gt, batch_data[0]))
         else:
             return gt
+    return None
 
 
 def unnormalize(tensor):
