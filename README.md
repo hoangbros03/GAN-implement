@@ -1,6 +1,12 @@
 # Introduction
 
-This repository contains our GAN implementations, reports, and experiment results for the mid-term project of INT3412E 20 in VNU-UET
+This repository contains our GAN (Generative Adversarial Network) implementations, reports, and experiment results for the mid-term project of INT3412E 20 in VNU-UET.
+
+# Description
+
+We provided two version of GAN: The original GAN with Multi layer perception layers and the enhanced GAN using Convolutional Neural Network layers. People can train, test, and generate the images within few commands and don't need a deep understanding of GAN.
+
+MNIST and CelebA datasets were used and tested. Other datasets also can be used, but require a few changes in the dataloader class. We welcome any improvement to this repo.
 
 # Authors
 
@@ -10,7 +16,7 @@ This repository contains our GAN implementations, reports, and experiment result
 
 # Usage
 
-Before using, please clone this repo, install the requirements, and install this repo as a pip package
+Before using, please clone this repo, install the requirements, and install this repo as a pip package.
 
 ```
 git clone https://github.com/hoangbros03/GAN-implement.git
