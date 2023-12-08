@@ -21,8 +21,9 @@ def convert_dataloader_to_sample(dataloader):
                 gt = batch_data[0]
             else:
                 gt = torch.vstack((gt, batch_data[0]))
-
-    return gt
+        else:
+            return gt
+    return None
 
 
 def unnormalize(tensor):
@@ -59,7 +60,7 @@ def kernel_inception_distance(prediction, gt):
     Returns:
         A number indicate the value from the specified metric
     """
-    kid = KernelInceptionDistance(subset_size=1)
+    kid = KernelInceptionDistance(subset_size=64)
     kid.update(prediction, real=False)
     kid.update(gt, real=True)
     return kid.compute()
