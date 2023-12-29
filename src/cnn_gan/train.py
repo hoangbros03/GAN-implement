@@ -281,7 +281,7 @@ if __name__ == "__main__":
     input_args = parser.parse_args()
 
     input_log = False
-    if input_args.key is not None:
+    if input_args.key is not None and input_args.key != "None":
         # Wandb
         wandb.login(key=input_args.key)
         run = wandb.init(

@@ -13,7 +13,7 @@ from pure_gan.utils import check_and_create_dir, get_random_string
 from pure_gan.mnist_dataloader import check_and_process_dataloader
 
 
-def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model_dir):
+def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model_dir, wandb_key):
     """Train function
 
     Args:
@@ -112,14 +112,15 @@ def train(dataloader, epochs, latent_dim, img_shape, learning_rate, output_model
             f"Epoch: {epoch}/{epochs}, g_loss: {total_loss_g/total_ite}, \
                 d_loss: {total_loss_d/total_ite}"
         )
-        wandb.log(
-            {
-                "Epoch": epoch,
-                "Total epoch": epochs,
-                "g_loss": total_loss_g / total_ite,
-                "d_loss": total_loss_d / total_ite,
-            }
-        )
+        if wandb_key is not None and wandb_key != "None":
+            wandb.log(
+                {
+                    "Epoch": epoch,
+                    "Total epoch": epochs,
+                    "g_loss": total_loss_g / total_ite,
+                    "d_loss": total_loss_d / total_ite,
+                }
+            )
 
         # Output the model
         if (epoch + 1) % 10 == 0:
@@ -149,6 +150,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_model_dir", type=str, default="models", help="Output model dir"
     )
+    parser.add_argument(
+        "--key", type=str, default=None, help="Key to authorize the wandb"
+    )
     args = parser.parse_args()
 
     # CONSTANT VARIABLE
@@ -161,17 +165,18 @@ if __name__ == "__main__":
     # Dataloader
     mnist_dataloader = check_and_process_dataloader("mnist", IMG_SHAPE, args.batch_size)
 
-    # Wandb
-    wandb.login()
-    run = wandb.init(
-        # Set the project where this run will be logged
-        project="new-pure-gan",
-        # Track hyperparameters and run metadata
-        config={
-            "learning_rate": args.lr,
-            "epochs": args.epochs,
-        },
-    )
+    if args.key is not None and args.key != "None":
+        # Wandb
+        wandb.login()
+        run = wandb.init(
+            # Set the project where this run will be logged
+            project="new-pure-gan",
+            # Track hyperparameters and run metadata
+            config={
+                "learning_rate": args.lr,
+                "epochs": args.epochs,
+            },
+        )
 
     # Train
     train(
@@ -181,4 +186,5 @@ if __name__ == "__main__":
         IMG_SHAPE,
         args.lr,
         args.output_model_dir,
+        args.key,
     )

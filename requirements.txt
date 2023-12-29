@@ -1,8 +1,8 @@
-numpy
-pandas
-matplotlib
-wandb
-torch
-torchvision
-torchaudio
-torchmetrics[image]
+matplotlib==3.8.2
+numpy==1.26.2
+setuptools==68.2.2
+torch==2.1.1
+torchmetrics==1.2.1
+torchvision==0.16.2
+tqdm==4.66.1
+wandb==0.16.1
